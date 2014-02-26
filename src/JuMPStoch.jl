@@ -200,7 +200,7 @@ macro defStochasticVar(m, x, extra...)
     end
 end
 
-getindex(d::Variable, owner::Model) = getStochastic(owner).varstup[tuple(d)]
+getindex(d::Variable, owner::Model) = getStochastic(owner).varstup[tuple(string(d))]
 getindex(d::JuMPDict,owner::Model,args...) = getStochastic(owner).varstup[tuple(d.name,args...)]
 
 macro genStochDict(instancename,T,idxsets...)
