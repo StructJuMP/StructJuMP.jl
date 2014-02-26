@@ -38,11 +38,9 @@ type StochasticData
     id
     children::Vector{Model}
     parent
-    # vars::Dict{String,Variable}
     varstup::Dict{Tuple,Variable}
 end
 
-# StochasticData() = StochasticData(nothing,Model[],nothing,Dict{String,Variable}(),Dict{Tuple,Variable}())
 StochasticData() = StochasticData(nothing,Model[],nothing,Dict{Tuple,Variable}())
 
 function StochasticModel(;solver=nothing)
@@ -53,7 +51,6 @@ end
 
 function StochasticModel(id, children, parent)
     m = Model(solver=parent.solver)
-    # m.ext[:Stochastic] = StochasticData(id, children, parent,Dict{String,Variable}(),Dict{Tuple,Variable}())
     m.ext[:Stochastic] = StochasticData(id, children, parent,Dict{Tuple,Variable}())
     return m
 end
@@ -73,20 +70,6 @@ function StochasticBlock(m::Model, id)
     return ch
 end
 
-# function StochasticVariable(m::Model,lower::Number,upper::Number,cat::Int,name::String,args...)
-#     m.numCols += 1
-#     push!(m.colNames, name)
-#     push!(m.colLower, convert(Float64,lower))
-#     push!(m.colUpper, convert(Float64,upper))
-#     push!(m.colCat, cat)
-#     push!(m.colVal,NaN)
-#     var = Variable(m, m.numCols)
-#     stoch = getStochastic(m)
-#     stoch.vars[string(name)] = var
-#     stoch.varstup[tuple(args...)] = var
-#     return var
-# end
-
 function StochasticVariable(m::Model,lower::Number,upper::Number,cat::Int,name::String,args...)
     m.numCols += 1
     push!(m.colNames, name)
@@ -100,32 +83,6 @@ function StochasticVariable(m::Model,lower::Number,upper::Number,cat::Int,name::
     stoch.varstup[tuple(name,args...)] = var
     return var
 end
-
-
-# function ancestor(m::Model, level::Int)
-#     stoch = getStochastic(m)
-#     if level == 1
-#         return getStochastic(stoch.parent).vars
-#     elseif level > 1
-#         return ancestor(stoch.parent, level-1)
-#     else
-#         error("Can only treat positive levels")
-#     end
-# end
-# ancestor(m::Model) = ancestor(m, 1)
-
-# function fillnames(args)
-#     if length(args) == 0
-#         return ""
-#     else
-#         str = "[$(args[1])"
-#         for i in 2:length(args)
-#             str *= ", $(args[i])"
-#         end
-#         str *= "]"
-#         return str
-#     end
-# end
 
 macro defStochasticVar(m, x, extra...)
     m = esc(m)
@@ -186,7 +143,7 @@ macro defStochasticVar(m, x, extra...)
                 error("Cannot create multiple variables when adding to existing constraints")
             end
             return quote
-                $(esc(var)) = Variable($m,$lb,$ub,$t,$objcoef,$cols,$coeffs,name=$(string(var)))
+                $(esc(var)) = StochasticVariable($m,$lb,$ub,$t,$objcoef,$cols,$coeffs,name=$(string(var)))
                 nothing
             end
         elseif length(extra) - gottype != 0
@@ -198,7 +155,7 @@ macro defStochasticVar(m, x, extra...)
     if isa(var,Symbol)
         # easy case
         return quote
-            $(esc(var)) = Variable($m,$lb,$ub,$t,$(string(var)))
+            $(esc(var)) = StochasticVariable($m,$lb,$ub,$t,$(string(var)))
             nothing
         end
     else
@@ -223,8 +180,6 @@ macro defStochasticVar(m, x, extra...)
         end
         tup = Expr(:tuple, [esc(x) for x in idxvars]...)
         code = :( $(refcall) = StochasticVariable($m, $lb, $ub, $t, $(string(var.args[1])), $(tup)...) )
-        # code = :( $(refcall) = StochasticVariable($m, $lb, $ub, $t, $(string(var.args[1]))*fillnames($tup), $(string(var.args[1])), $(tup)...) )
-        # code = :( $(refcall) = Variable($m, $lb, $ub, $t) )
         for (idxvar, idxset) in zip(reverse(idxvars),reverse(idxsets))
             code = quote
                 for $(esc(idxvar)) in $idxset
@@ -233,8 +188,7 @@ macro defStochasticVar(m, x, extra...)
             end
         end
        
-       mac = Expr(:macrocall,symbol("@gendict"),varname,:Variable,idxsets...)
-        # mac = Expr(:macrocall,symbol("@genStochDict"),varname,:Variable,idxsets...)
+        mac = Expr(:macrocall,symbol("@genStochDict"),varname,:Variable,idxsets...)
         addDict = :( push!($(m).dictList, $varname) )
         code = quote 
             $mac
@@ -246,85 +200,85 @@ macro defStochasticVar(m, x, extra...)
     end
 end
 
-getindex(d::JuMPDict,owner::Model) = getStochastic(owner).varstup[tuple(d)]
+getindex(d::Variable, owner::Model) = getStochastic(owner).varstup[tuple(d)]
 getindex(d::JuMPDict,owner::Model,args...) = getStochastic(owner).varstup[tuple(d.name,args...)]
 
-# macro genStochDict(instancename,T,idxsets...)
-#     N = length(idxsets)
-#     typename = symbol(string("JuMPDict",gensym()))
-#     isrange = Array(Bool,N)
-#     offset = Array(Int,N)
-#     dictnames = Array(Symbol,N)
-#     for i in 1:N
-#         if isexpr(idxsets[i],:(:)) && length(idxsets[i].args) == 2 # don't yet optimize ranges with steps
-#             isrange[i] = true
-#             if isa(idxsets[i].args[1],Int)
-#                 offset[i] = 1 - idxsets[i].args[1]
-#             else
-#                 error("Currently only ranges with integer compile-time starting values are allowed as index sets. $(idxsets[i].args[1]) is not an integer in range $(idxsets[i]).")
-#             end
-#         else
-#             isrange[i] = false
-#             dictnames[i] = gensym()
-#         end
-#     end
-#     typecode = :(type $(typename){T} <: JuMPDict{T}; innerArray::Array{T,$N}; name::String;
-#                         indexsets end)
-#     builddicts = quote end
-#     for i in 1:N
-#         if !isrange[i]
-#             push!(typecode.args[3].args,:($(dictnames[i])::Dict))
-#             push!(builddicts.args, quote 
-#                 $(esc(dictnames[i])) = Dict(); 
-#                 for (j,k) in enumerate($(esc(idxsets[i])))
-#                     $(esc(dictnames[i]))[k] = j
-#                 end 
-#             end)
-#         end
-#     end
-#     getidxlhs = :(getindex(d::$(typename)))
-#     setidxlhs = :(setindex!(d::$(typename),val))
-#     getidxrhs = :(getindex(d.innerArray))
-#     setidxrhs = :(setindex!(d.innerArray,val))
-#     getidxlhs2 = :(getindex(d::$(typename),owner::Model,args...))
-#     getidxrhs2 = :(getStochastic(owner).varstup[tuple(d,args...)])
-#     maplhs = :(mapvals(f,d::$(typename)))
-#     maprhs = :($(typename)(map(f,d.innerArray),d.name,d.indexsets))
-#     for i in 1:N
-#         varname = symbol(string("x",i))
+macro genStochDict(instancename,T,idxsets...)
+    N = length(idxsets)
+    typename = symbol(string("JuMPDict",gensym()))
+    isrange = Array(Bool,N)
+    offset = Array(Int,N)
+    dictnames = Array(Symbol,N)
+    for i in 1:N
+        if isexpr(idxsets[i],:(:)) && length(idxsets[i].args) == 2 # don't yet optimize ranges with steps
+            isrange[i] = true
+            if isa(idxsets[i].args[1],Int)
+                offset[i] = 1 - idxsets[i].args[1]
+            else
+                error("Currently only ranges with integer compile-time starting values are allowed as index sets. $(idxsets[i].args[1]) is not an integer in range $(idxsets[i]).")
+            end
+        else
+            isrange[i] = false
+            dictnames[i] = gensym()
+        end
+    end
+    typecode = :(type $(typename){T} <: JuMPDict{T}; innerArray::Array{T,$N}; name::String;
+                        indexsets end)
+    builddicts = quote end
+    for i in 1:N
+        if !isrange[i]
+            push!(typecode.args[3].args,:($(dictnames[i])::Dict))
+            push!(builddicts.args, quote 
+                $(esc(dictnames[i])) = Dict(); 
+                for (j,k) in enumerate($(esc(idxsets[i])))
+                    $(esc(dictnames[i]))[k] = j
+                end 
+            end)
+        end
+    end
+    getidxlhs = :(getindex(d::$(typename)))
+    setidxlhs = :(setindex!(d::$(typename),val))
+    getidxrhs = :(getindex(d.innerArray))
+    setidxrhs = :(setindex!(d.innerArray,val))
+    getidxlhs2 = :(getindex(d::$(typename),owner::Model))
+    getidxrhs2 = :(error("Must index JuMPDict"))
+    maplhs = :(mapvals(f,d::$(typename)))
+    maprhs = :($(typename)(map(f,d.innerArray),d.name,d.indexsets))
+    for i in 1:N
+        varname = symbol(string("x",i))
         
-#         if isrange[i]
-#             push!(getidxlhs.args,:($varname))
-#             push!(setidxlhs.args,:($varname))
+        if isrange[i]
+            push!(getidxlhs.args,:($varname))
+            push!(setidxlhs.args,:($varname))
 
-#             push!(getidxrhs.args,:($varname+$(offset[i])))
-#             push!(setidxrhs.args,:($varname+$(offset[i])))
-#         else
-#             push!(getidxlhs.args,varname)
-#             push!(setidxlhs.args,varname)
+            push!(getidxrhs.args,:($varname+$(offset[i])))
+            push!(setidxrhs.args,:($varname+$(offset[i])))
+        else
+            push!(getidxlhs.args,varname)
+            push!(setidxlhs.args,varname)
 
-#             push!(getidxrhs.args,:(d.($(Expr(:quote,dictnames[i])))[$varname]))
-#             push!(setidxrhs.args,:(d.($(Expr(:quote,dictnames[i])))[$varname]))
-#             push!(maprhs.args,:(d.($(Expr(:quote,dictnames[i])))))
-#         end
-#     end
+            push!(getidxrhs.args,:(d.($(Expr(:quote,dictnames[i])))[$varname]))
+            push!(setidxrhs.args,:(d.($(Expr(:quote,dictnames[i])))[$varname]))
+            push!(maprhs.args,:(d.($(Expr(:quote,dictnames[i])))))
+        end
+    end
 
-#     funcs = :($getidxlhs = $getidxrhs; $setidxlhs = $setidxrhs; $maplhs = $maprhs; $getidxlhs2 = $getidxrhs2)
-#     geninstance = :($(esc(instancename)) = $(typename)(Array($T),$(string(instancename)),$(esc(Expr(:tuple,idxsets...)))))
-#     for i in 1:N
-#         push!(geninstance.args[2].args[2].args, :(length($(esc(idxsets[i])))))
-#         if !isrange[i]
-#             push!(geninstance.args[2].args, esc(dictnames[i]))
-#         end
-#     end
-#     eval(Expr(:toplevel, typecode))
-#     eval(Expr(:toplevel, funcs))
+    funcs = :($getidxlhs2 = $getidxrhs2; $getidxlhs = $getidxrhs; $setidxlhs = $setidxrhs; $maplhs = $maprhs)
+    geninstance = :($(esc(instancename)) = $(typename)(Array($T),$(string(instancename)),$(esc(Expr(:tuple,idxsets...)))))
+    for i in 1:N
+        push!(geninstance.args[2].args[2].args, :(length($(esc(idxsets[i])))))
+        if !isrange[i]
+            push!(geninstance.args[2].args, esc(dictnames[i]))
+        end
+    end
+    eval(Expr(:toplevel, typecode))
+    eval(Expr(:toplevel, funcs))
 
-#     quote
-#         $builddicts
-#         $geninstance
-#     end
+    quote
+        $builddicts
+        $geninstance
+    end
 
-# end
+end
 
 end
