@@ -19,7 +19,7 @@ for s = 1:p
         bll = StochasticBlock(bl, "level2-$s,$t")
         @defStochasticVar(bll, w[1:n] >= 0)
         @addConstraint(bll, sum{w[i], i=1:n; iseven(i)} == 1)
-        parent = getStochastic(bll).parent
+        parent = getParent(bll)
         @addConstraint(bll, sum{z[parent,i], i=1:n} - sum{w[i], i=1:n} >= 0)
         @addConstraint(bll, sum{z[parent,i], i=1:n} >= 0)
         @addConstraint(bll, 0 >= sum{w[i], i=1:n})

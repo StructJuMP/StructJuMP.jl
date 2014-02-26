@@ -1,7 +1,11 @@
 module JuMPStoch
 
 import JuMP.JuMPDict
-importall JuMP
+import JuMP.IndexedVector
+import JuMP.checkNameStatus
+import JuMP.addelt
+
+using JuMP
 
 using MathProgBase
 using MathProgBase.MathProgSolverInterface
@@ -10,7 +14,7 @@ importall Base
 
 using Base.Meta
 
-export StochasticData, StochasticModel, getStochastic, StochasticBlock, ancestor, StochasticVariable, @defStochasticVar
+export StochasticData, StochasticModel, getStochastic, getParent, StochasticBlock, ancestor, StochasticVariable, @defStochasticVar
 
 # JuMP rexports
 export
@@ -32,7 +36,7 @@ export
     @addConstraint, @defVar, 
     @defConstrRef, @setObjective, addToExpression
 
-pushchild!(m::Model, block) = push!(m.ext[:Stochastic].children, block)
+pushchild!(m::Model, block) = push!(getStochastic(m).children, block)
 
 type StochasticData
     id
@@ -63,6 +67,8 @@ function getStochastic(m::Model)
     end
 end
 
+getParent(m::Model) = getStochastic(m).parent
+
 function StochasticBlock(m::Model, id)
     stoch = getStochastic(m)
     ch = StochasticModel(id, Model[], m)
@@ -70,7 +76,21 @@ function StochasticBlock(m::Model, id)
     return ch
 end
 
-function StochasticVariable(m::Model,lower::Number,upper::Number,cat::Int,name::String,args...)
+# function StochasticVariable(m::Model,lower::Number,upper::Number,cat::Int,name::String,args...)
+#     m.numCols += 1
+#     push!(m.colNames, name)
+#     push!(m.colLower, convert(Float64,lower))
+#     push!(m.colUpper, convert(Float64,upper))
+#     push!(m.colCat, cat)
+#     push!(m.colVal,NaN)
+#     var = Variable(m, m.numCols)
+#     stoch = getStochastic(m)
+#     # stoch.vars[string(name)] = var
+#     stoch.varstup[tuple(name,args...)] = var
+#     return var
+# end
+
+function StochasticVariable(m::Model,lower::Number,upper::Number,cat::Int,name::String)
     m.numCols += 1
     push!(m.colNames, name)
     push!(m.colLower, convert(Float64,lower))
@@ -79,8 +99,21 @@ function StochasticVariable(m::Model,lower::Number,upper::Number,cat::Int,name::
     push!(m.colVal,NaN)
     var = Variable(m, m.numCols)
     stoch = getStochastic(m)
-    # stoch.vars[string(name)] = var
-    stoch.varstup[tuple(name,args...)] = var
+    stoch.varstup[tuple(name)] = var
+    return var
+end
+
+function StochasticVariable(m::Model,lower::Number,upper::Number,cat::Int,args::Tuple)
+    m.numCols += 1
+    push!(m.colNames, "")
+    # push!(m.colNames, name)
+    push!(m.colLower, convert(Float64,lower))
+    push!(m.colUpper, convert(Float64,upper))
+    push!(m.colCat, cat)
+    push!(m.colVal,NaN)
+    var = Variable(m, m.numCols)
+    stoch = getStochastic(m)
+    stoch.varstup[args] = var
     return var
 end
 
@@ -179,7 +212,8 @@ macro defStochasticVar(m, x, extra...)
             push!(refcall.args, esc(idxvar))
         end
         tup = Expr(:tuple, [esc(x) for x in idxvars]...)
-        code = :( $(refcall) = StochasticVariable($m, $lb, $ub, $t, $(string(var.args[1])), $(tup)...) )
+        # code = :( $(refcall) = StochasticVariable($m, $lb, $ub, $t, $(string(var.args[1])), $(tup)...) )
+        code = :( $(refcall) = StochasticVariable($m, $lb, $ub, $t, tuple($(string(var.args[1])), $(tup)...)) )
         for (idxvar, idxset) in zip(reverse(idxvars),reverse(idxsets))
             code = quote
                 for $(esc(idxvar)) in $idxset
@@ -279,6 +313,70 @@ macro genStochDict(instancename,T,idxsets...)
         $geninstance
     end
 
+end
+
+function affToStr(a::AffExpr, showConstant=true)
+    if length(a.vars) == 0
+        if showConstant
+            return string(a.constant)
+        else
+            return "0.0"
+        end
+    end
+
+    # Get reference to models
+    moddict = Dict{Model,IndexedVector}()
+    for var in a.vars
+        mod = var.m
+        if !haskey(moddict, mod)
+            checkNameStatus(mod)
+            moddict[var.m] = IndexedVector(Float64,mod.numCols)
+        end
+    end
+
+    # Collect like terms
+    for ind in 1:length(a.vars)
+        addelt(moddict[a.vars[ind].m], a.vars[ind].col, a.coeffs[ind])
+    end
+
+    elm = 0
+    termStrings = Array(UTF8String, 2*length(a.vars))
+    for m in keys(moddict)
+        indvec = moddict[m]
+        for i in 1:indvec.nnz
+            idx = indvec.nzidx[i]
+            if abs(indvec.elts[idx]) > 1e-20
+                if elm == 0
+                    elm += 1
+                    termStrings[1] = "$(indvec.elts[idx]) $(getName(m,idx))"
+                else 
+                    if indvec.elts[idx] < 0
+                        termStrings[2*elm] = " - "
+                    else
+                        termStrings[2*elm] = " + "
+                    end
+                    termStrings[2*elm+1] = "$(abs(indvec.elts[idx])) $(getName(m,idx))"
+                    elm += 1
+                end
+            end
+        end
+    end
+
+    if elm == 0
+        ret = "0.0"
+    else
+        # And then connect them up with +s
+        ret = join(termStrings[1:(2*elm-1)])
+    end
+    
+    if abs(a.constant) >= 0.000001 && showConstant
+        if a.constant < 0
+            ret = string(ret, " - ", abs(a.constant))
+        else
+            ret = string(ret, " + ", a.constant)
+        end
+    end
+    return ret
 end
 
 end
