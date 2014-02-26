@@ -10,7 +10,7 @@ importall Base
 
 using Base.Meta
 
-export StochasticData, StochasticModel, getStochastic, StochasticBlock, ancestor, @defStochasticVar
+export StochasticData, StochasticModel, getStochastic, StochasticBlock, ancestor, StochasticVariable, @defStochasticVar
 
 # JuMP rexports
 export
@@ -70,7 +70,7 @@ function StochasticBlock(m::Model, id)
     return ch
 end
 
-function Variable(m::Model,lower::Number,upper::Number,cat::Int,name::String)
+function StochasticVariable(m::Model,lower::Number,upper::Number,cat::Int,name::String)
     m.numCols += 1
     push!(m.colNames, name)
     push!(m.colLower, convert(Float64,lower))
@@ -87,7 +87,7 @@ end
 function ancestor(m::Model, level::Int)
     stoch = getStochastic(m)
     if level == 1
-        return stoch.vars
+        return getStochastic(stoch.parent).vars
     elseif level > 1
         return ancestor(stoch.parent, level-1)
     else
@@ -95,6 +95,19 @@ function ancestor(m::Model, level::Int)
     end
 end
 ancestor(m::Model) = ancestor(m, 1)
+
+function fillnames(args)
+    if length(args) == 0
+        return ""
+    else
+        str = "[$(args[1])"
+        for i in 2:length(args)
+            str *= ", $(args[i])"
+        end
+        str *= "]"
+        return str
+    end
+end
 
 macro defStochasticVar(m, x, extra...)
     m = esc(m)
@@ -191,7 +204,7 @@ macro defStochasticVar(m, x, extra...)
             push!(refcall.args, esc(idxvar))
         end
         tup = Expr(:tuple, [esc(x) for x in idxvars]...)
-        code = :( $(refcall) = Variable($m, $lb, $ub, $t, $(string(var.args[1]))*string($tup) ) )
+        code = :( $(refcall) = StochasticVariable($m, $lb, $ub, $t, $(string(var.args[1]))*fillnames($tup) ) )
         # code = :( $(refcall) = Variable($m, $lb, $ub, $t) )
         for (idxvar, idxset) in zip(reverse(idxvars),reverse(idxsets))
             code = quote
