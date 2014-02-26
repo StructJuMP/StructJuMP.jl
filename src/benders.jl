@@ -62,53 +62,28 @@ function solveStochastic(m::Model)
     stoch = getStochastic(m)
     @assert stoch.parent == nothing # make sure we're at the master problem
 
+    defVar(m, θ) # hopefully this name doesn't conflict...
+
     master_stat solve(m)
     @assert master_stat == :Optimal
     passMasterSolution(m)
 
+    m.obj += θ
+
     for bl in stoch.children
-        creatMasterMat(bl)
+        createMasterMat(bl)
     end
 
     while true
         for bl in stoch.children
             solve(bl)
+            if bl.objVal > tol
+            𝛑 = getconstrsolution(bl.internalModel)
+            lhs = 𝛑 * getconstrmatrix(bl.internalModel)
+            lb  = 𝛑 * getconstrLB(bl.internalModel) # what to do here...
+            ub  = 𝛑 * getconstrUB(bl.internalModel) # and here...
+            addconstr!(m.internalModel, Int64[1:length(lhs)], lhs, lb, ub)
         end
-        
-    end
-
-    # ape JuliaBenders
-    nscen = length(m.blocks[1].children)
-    converged = false
-    niter = 0
-    mastertime = 0.
-
-    while true
-        Tx = d.Tmat*stage1sol
-        # solve benders subproblems
-        nviolated = 0
-        for s in 1:nscen
-            optval, subgrad = solveSubproblem(scenarioData[s][1]-Tx,scenarioData[s][2]-Tx)
-            if (optval > thetasol[s] + 1e-7)
-                nviolated += 1
-                addCut(clpmaster, optval, subgrad, stage1sol, s)
-            end
-
-        end
-
-        if nviolated == 0
-            break
-        end
-        println("Generated $nviolated violated cuts")
-        # resolve master
-        t = time()
-        initial_solve(clpmaster)
-        mastertime += time() - t
-        @assert is_proven_optimal(clpmaster)
-        sol = get_col_solution(clpmaster)
-        stage1sol = sol[1:ncol1]
-        thetasol = sol[(ncol1+1):end]
-        niter += 1
     end
 
 end
