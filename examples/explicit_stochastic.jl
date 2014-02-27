@@ -7,18 +7,18 @@ TESTTIME = GEN = WIND = BUS = LIN = 1:2
 
 m = StochasticModel()
 
-@defVar(m, dummyV >= 0)
+@defStochasticVar(m, dummyV >= 0)
 
 s0 = StochasticBlock(m, "Stage 0")
-@defVar(s0, 0 <= y[TESTTIME,GEN] <= 1)
+@defStochasticVar(s0, 0 <= y[TESTTIME,GEN] <= 1)
 @setObjective(s0, Min, FIXEDGENCOST*sum{y[t,j], t=TESTTIME,j=GEN})
 
 for it in 1:NUMSTAGES
-    st = Block(s0, "Stage $it")
-    @defVar(st, 0 <= Pgen[TESTTIME,j=GEN] <= np_cap[j])
-    @defVar(st, 0 <= Pwind[t=TESTTIME,j=WIND] wind_total[node,t]*wind_share[j])
-    @defVar(st, -THETASCALE*pi/2 <= theta[TESTTIME,j=BUS] <= THETASCALE*pi/2)
-    @defVar(st, -Pmax[i] <= P[TESTTIME,i=LIN] <= Pmax[i])
+    st = StochasticBlock(s0, "Stage $it")
+    @defStochasticVar(st, 0 <= Pgen[TESTTIME,j=GEN] <= np_cap[j])
+    @defStochasticVar(st, 0 <= Pwind[t=TESTTIME,j=WIND] wind_total[node,t]*wind_share[j])
+    @defStochasticVar(st, -THETASCALE*pi/2 <= theta[TESTTIME,j=BUS] <= THETASCALE*pi/2)
+    @defStochasticVar(st, -Pmax[i] <= P[TESTTIME,i=LIN] <= Pmax[i])
     for t in TESTTIME
         for j in BUS
             @addConstraint(st, ( sum{P[t,i], i=LIN; j==rec_bus[i]} 

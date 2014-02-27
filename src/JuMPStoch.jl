@@ -1,10 +1,6 @@
 module JuMPStoch
 
 import JuMP.JuMPDict
-import JuMP.IndexedVector
-import JuMP.checkNameStatus
-import JuMP.addelt
-
 using JuMP
 
 using MathProgBase
@@ -33,7 +29,7 @@ export
     # Expressions and constraints
     affToStr, quadToStr, conToStr, chgConstrRHS,
     # Macros and support functions
-    @addConstraint, @defVar, 
+    @addConstraint, @defVar,
     @defConstrRef, @setObjective, addToExpression
 
 pushchild!(m::Model, block) = push!(getStochastic(m).children, block)
@@ -75,20 +71,6 @@ function StochasticBlock(m::Model, id)
     pushchild!(m, ch)
     return ch
 end
-
-# function StochasticVariable(m::Model,lower::Number,upper::Number,cat::Int,name::String,args...)
-#     m.numCols += 1
-#     push!(m.colNames, name)
-#     push!(m.colLower, convert(Float64,lower))
-#     push!(m.colUpper, convert(Float64,upper))
-#     push!(m.colCat, cat)
-#     push!(m.colVal,NaN)
-#     var = Variable(m, m.numCols)
-#     stoch = getStochastic(m)
-#     # stoch.vars[string(name)] = var
-#     stoch.varstup[tuple(name,args...)] = var
-#     return var
-# end
 
 function StochasticVariable(m::Model,lower::Number,upper::Number,cat::Int,name::String)
     m.numCols += 1
@@ -184,7 +166,7 @@ macro defStochasticVar(m, x, extra...)
         end
     end
 
-    #println("lb: $lb ub: $ub var: $var")      
+    #println("lb: $lb ub: $ub var: $var")
     if isa(var,Symbol)
         # easy case
         return quote
@@ -221,10 +203,10 @@ macro defStochasticVar(m, x, extra...)
                 end
             end
         end
-       
+
         mac = Expr(:macrocall,symbol("@genStochDict"),varname,:Variable,idxsets...)
         addDict = :( push!($(m).dictList, $varname) )
-        code = quote 
+        code = quote
             $mac
             $code
             $addDict
@@ -262,11 +244,11 @@ macro genStochDict(instancename,T,idxsets...)
     for i in 1:N
         if !isrange[i]
             push!(typecode.args[3].args,:($(dictnames[i])::Dict))
-            push!(builddicts.args, quote 
-                $(esc(dictnames[i])) = Dict(); 
+            push!(builddicts.args, quote
+                $(esc(dictnames[i])) = Dict();
                 for (j,k) in enumerate($(esc(idxsets[i])))
                     $(esc(dictnames[i]))[k] = j
-                end 
+                end
             end)
         end
     end
@@ -280,7 +262,7 @@ macro genStochDict(instancename,T,idxsets...)
     maprhs = :($(typename)(map(f,d.innerArray),d.name,d.indexsets))
     for i in 1:N
         varname = symbol(string("x",i))
-        
+
         if isrange[i]
             push!(getidxlhs.args,:($varname))
             push!(setidxlhs.args,:($varname))
@@ -313,70 +295,6 @@ macro genStochDict(instancename,T,idxsets...)
         $geninstance
     end
 
-end
-
-function affToStr(a::AffExpr, showConstant=true)
-    if length(a.vars) == 0
-        if showConstant
-            return string(a.constant)
-        else
-            return "0.0"
-        end
-    end
-
-    # Get reference to models
-    moddict = Dict{Model,IndexedVector}()
-    for var in a.vars
-        mod = var.m
-        if !haskey(moddict, mod)
-            checkNameStatus(mod)
-            moddict[var.m] = IndexedVector(Float64,mod.numCols)
-        end
-    end
-
-    # Collect like terms
-    for ind in 1:length(a.vars)
-        addelt(moddict[a.vars[ind].m], a.vars[ind].col, a.coeffs[ind])
-    end
-
-    elm = 0
-    termStrings = Array(UTF8String, 2*length(a.vars))
-    for m in keys(moddict)
-        indvec = moddict[m]
-        for i in 1:indvec.nnz
-            idx = indvec.nzidx[i]
-            if abs(indvec.elts[idx]) > 1e-20
-                if elm == 0
-                    elm += 1
-                    termStrings[1] = "$(indvec.elts[idx]) $(getName(m,idx))"
-                else 
-                    if indvec.elts[idx] < 0
-                        termStrings[2*elm] = " - "
-                    else
-                        termStrings[2*elm] = " + "
-                    end
-                    termStrings[2*elm+1] = "$(abs(indvec.elts[idx])) $(getName(m,idx))"
-                    elm += 1
-                end
-            end
-        end
-    end
-
-    if elm == 0
-        ret = "0.0"
-    else
-        # And then connect them up with +s
-        ret = join(termStrings[1:(2*elm-1)])
-    end
-    
-    if abs(a.constant) >= 0.000001 && showConstant
-        if a.constant < 0
-            ret = string(ret, " - ", abs(a.constant))
-        else
-            ret = string(ret, " + ", a.constant)
-        end
-    end
-    return ret
 end
 
 end
