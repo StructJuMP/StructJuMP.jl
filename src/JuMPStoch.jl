@@ -1,6 +1,7 @@
 module JuMPStoch
 
 import JuMP.JuMPDict
+import JuMP.@gendict
 using JuMP
 
 using MathProgBase
@@ -10,7 +11,7 @@ importall Base
 
 using Base.Meta
 
-export StochasticData, StochasticModel, getStochastic, parent, children, StochasticBlock, StochasticVariable, variables, @defStochasticVar
+export StochasticData, StochasticModel, getStochastic, parent, children, StochasticBlock, variables, @defStochasticVar
 
 # JuMP rexports
 export
@@ -38,11 +39,10 @@ type StochasticData
     id
     children::Vector{Model}
     parent
-    varstup::Dict{Tuple,Variable}
     vardict::Dict
 end
 
-StochasticData() = StochasticData(nothing,Model[],nothing,Dict{Tuple,Variable}(),Dict())
+StochasticData() = StochasticData(nothing,Model[],nothing,Dict())
 
 function StochasticModel(;solver=nothing)
     m = Model(solver=solver)
@@ -52,7 +52,7 @@ end
 
 function StochasticModel(id, children, parent)
     m = Model(solver=parent.solver)
-    m.ext[:Stochastic] = StochasticData(id, children, parent,Dict{Tuple,Variable}(),Dict())
+    m.ext[:Stochastic] = StochasticData(id, children, parent,Dict())
     return m
 end
 
@@ -72,33 +72,6 @@ function StochasticBlock(m::Model, id)
     ch = StochasticModel(id, Model[], m)
     pushchild!(m, ch)
     return ch
-end
-
-function StochasticVariable(m::Model,lower::Number,upper::Number,cat::Int,name::String)
-    m.numCols += 1
-    push!(m.colNames, name)
-    push!(m.colLower, convert(Float64,lower))
-    push!(m.colUpper, convert(Float64,upper))
-    push!(m.colCat, cat)
-    push!(m.colVal,NaN)
-    var = Variable(m, m.numCols)
-    stoch = getStochastic(m)
-    stoch.varstup[tuple(name)] = var
-    return var
-end
-
-function StochasticVariable(m::Model,lower::Number,upper::Number,cat::Int,args::Tuple)
-    m.numCols += 1
-    push!(m.colNames, "")
-    # push!(m.colNames, name)
-    push!(m.colLower, convert(Float64,lower))
-    push!(m.colUpper, convert(Float64,upper))
-    push!(m.colCat, cat)
-    push!(m.colVal,NaN)
-    var = Variable(m, m.numCols)
-    stoch = getStochastic(m)
-    stoch.varstup[args] = var
-    return var
 end
 
 variables(m::Model) = getStochastic(m).vardict
@@ -162,7 +135,7 @@ macro defStochasticVar(m, x, extra...)
                 error("Cannot create multiple variables when adding to existing constraints")
             end
             return quote
-                $(esc(var)) = StochasticVariable($m,$lb,$ub,$t,$objcoef,$cols,$coeffs,name=$(string(var)))
+                $(esc(var)) = Variable($m,$lb,$ub,$t,$objcoef,$cols,$coeffs,name=$(string(var)))
                 nothing
             end
         elseif length(extra) - gottype != 0
@@ -174,7 +147,7 @@ macro defStochasticVar(m, x, extra...)
     if isa(var,Symbol)
         # easy case
         return quote
-            $(esc(var)) = StochasticVariable($m,$lb,$ub,$t,$(string(var)))
+            $(esc(var)) = Variable($m,$lb,$ub,$t,$(string(var)))
             $(m).ext[:Stochastic].vardict[$(quot(var))] = $(esc(var))   
             nothing
         end
@@ -199,7 +172,8 @@ macro defStochasticVar(m, x, extra...)
             push!(refcall.args, esc(idxvar))
         end
         tup = Expr(:tuple, [esc(x) for x in idxvars]...)
-        code = :( $(refcall) = StochasticVariable($m, $lb, $ub, $t, tuple($(string(var.args[1])), $(tup)...)) )
+        code = :( $(refcall) = Variable($m, $lb, $ub, $t) )
+        # code = :( $(refcall) = Variable($m, $lb, $ub, $t, tuple($(string(var.args[1])), $(tup)...)) )
         for (idxvar, idxset) in zip(reverse(idxvars),reverse(idxsets))
             code = quote
                 for $(esc(idxvar)) in $idxset
@@ -208,7 +182,7 @@ macro defStochasticVar(m, x, extra...)
             end
         end
 
-        mac = Expr(:macrocall,symbol("@genStochDict"),varname,:Variable,idxsets...)
+        mac = Expr(:macrocall,symbol("@gendict"),varname,:Variable,idxsets...)
         addVarDict = :( $(m).ext[:Stochastic].vardict[$(quot(var.args[1]))] = $varname )   
         addDict = :( push!($(m).dictList, $varname) )
         code = quote
@@ -220,87 +194,6 @@ macro defStochasticVar(m, x, extra...)
         end
         return code
     end
-end
-
-getindex(d::Variable, owner::Model) = getStochastic(owner).varstup[tuple(string(d))]
-getindex(d::JuMPDict,owner::Model,args...) = getStochastic(owner).varstup[tuple(d.name,args...)]
-
-macro genStochDict(instancename,T,idxsets...)
-    N = length(idxsets)
-    typename = symbol(string("JuMPDict",gensym()))
-    isrange = Array(Bool,N)
-    offset = Array(Int,N)
-    dictnames = Array(Symbol,N)
-    for i in 1:N
-        if isexpr(idxsets[i],:(:)) && length(idxsets[i].args) == 2 # don't yet optimize ranges with steps
-            isrange[i] = true
-            if isa(idxsets[i].args[1],Int)
-                offset[i] = 1 - idxsets[i].args[1]
-            else
-                error("Currently only ranges with integer compile-time starting values are allowed as index sets. $(idxsets[i].args[1]) is not an integer in range $(idxsets[i]).")
-            end
-        else
-            isrange[i] = false
-            dictnames[i] = gensym()
-        end
-    end
-    typecode = :(type $(typename){T} <: JuMPDict{T}; innerArray::Array{T,$N}; name::String;
-                        indexsets end)
-    builddicts = quote end
-    for i in 1:N
-        if !isrange[i]
-            push!(typecode.args[3].args,:($(dictnames[i])::Dict))
-            push!(builddicts.args, quote
-                $(esc(dictnames[i])) = Dict();
-                for (j,k) in enumerate($(esc(idxsets[i])))
-                    $(esc(dictnames[i]))[k] = j
-                end
-            end)
-        end
-    end
-    getidxlhs = :(getindex(d::$(typename)))
-    setidxlhs = :(setindex!(d::$(typename),val))
-    getidxrhs = :(getindex(d.innerArray))
-    setidxrhs = :(setindex!(d.innerArray,val))
-    getidxlhs2 = :(getindex(d::$(typename),owner::Model))
-    getidxrhs2 = :(error("Must index JuMPDict"))
-    maplhs = :(mapvals(f,d::$(typename)))
-    maprhs = :($(typename)(map(f,d.innerArray),d.name,d.indexsets))
-    for i in 1:N
-        varname = symbol(string("x",i))
-
-        if isrange[i]
-            push!(getidxlhs.args,:($varname))
-            push!(setidxlhs.args,:($varname))
-
-            push!(getidxrhs.args,:($varname+$(offset[i])))
-            push!(setidxrhs.args,:($varname+$(offset[i])))
-        else
-            push!(getidxlhs.args,varname)
-            push!(setidxlhs.args,varname)
-
-            push!(getidxrhs.args,:(d.($(Expr(:quote,dictnames[i])))[$varname]))
-            push!(setidxrhs.args,:(d.($(Expr(:quote,dictnames[i])))[$varname]))
-            push!(maprhs.args,:(d.($(Expr(:quote,dictnames[i])))))
-        end
-    end
-
-    funcs = :($getidxlhs2 = $getidxrhs2; $getidxlhs = $getidxrhs; $setidxlhs = $setidxrhs; $maplhs = $maprhs)
-    geninstance = :($(esc(instancename)) = $(typename)(Array($T),$(string(instancename)),$(esc(Expr(:tuple,idxsets...)))))
-    for i in 1:N
-        push!(geninstance.args[2].args[2].args, :(length($(esc(idxsets[i])))))
-        if !isrange[i]
-            push!(geninstance.args[2].args, esc(dictnames[i]))
-        end
-    end
-    eval(Expr(:toplevel, typecode))
-    eval(Expr(:toplevel, funcs))
-
-    quote
-        $builddicts
-        $geninstance
-    end
-
 end
 
 end
