@@ -7,11 +7,11 @@ using JuMP
 using MathProgBase
 using MathProgBase.MathProgSolverInterface
 
+import Base.parent
 importall Base
-
 using Base.Meta
 
-export StochasticData, StochasticModel, getStochastic, parent, children, StochasticBlock, variables, @defStochasticVar
+export StochasticData, StochasticModel, getStochastic, parent, children, variables, StochasticBlock, @defStochasticVar
 
 # JuMP rexports
 export
@@ -69,7 +69,7 @@ variables(m::Model) = getStochastic(m).vardict
 function StochasticBlock(m::Model, id)
     stoch = getStochastic(m)
     ch = StochasticModel(id, Model[], m)
-    push!(getStochastic(m).children, block)
+    push!(getStochastic(m).children, ch)
     return ch
 end
 
