@@ -10,7 +10,7 @@ importall Base
 
 using Base.Meta
 
-export StochasticData, StochasticModel, getStochastic, getParent, StochasticBlock, ancestor, StochasticVariable, @defStochasticVar
+export StochasticData, StochasticModel, getStochastic, parent, children, StochasticBlock, StochasticVariable, variables, @defStochasticVar
 
 # JuMP rexports
 export
@@ -39,9 +39,10 @@ type StochasticData
     children::Vector{Model}
     parent
     varstup::Dict{Tuple,Variable}
+    vardict::Dict
 end
 
-StochasticData() = StochasticData(nothing,Model[],nothing,Dict{Tuple,Variable}())
+StochasticData() = StochasticData(nothing,Model[],nothing,Dict{Tuple,Variable}(),Dict())
 
 function StochasticModel(;solver=nothing)
     m = Model(solver=solver)
@@ -51,7 +52,7 @@ end
 
 function StochasticModel(id, children, parent)
     m = Model(solver=parent.solver)
-    m.ext[:Stochastic] = StochasticData(id, children, parent,Dict{Tuple,Variable}())
+    m.ext[:Stochastic] = StochasticData(id, children, parent,Dict{Tuple,Variable}(),Dict())
     return m
 end
 
@@ -63,7 +64,8 @@ function getStochastic(m::Model)
     end
 end
 
-getParent(m::Model) = getStochastic(m).parent
+parent(m::Model) = getStochastic(m).parent
+children(m::Model) = getStochastic(m).children
 
 function StochasticBlock(m::Model, id)
     stoch = getStochastic(m)
@@ -98,6 +100,8 @@ function StochasticVariable(m::Model,lower::Number,upper::Number,cat::Int,args::
     stoch.varstup[args] = var
     return var
 end
+
+variables(m::Model) = getStochastic(m).vardict
 
 macro defStochasticVar(m, x, extra...)
     m = esc(m)
@@ -171,6 +175,7 @@ macro defStochasticVar(m, x, extra...)
         # easy case
         return quote
             $(esc(var)) = StochasticVariable($m,$lb,$ub,$t,$(string(var)))
+            $(m).ext[:Stochastic].vardict[$(quot(var))] = $(esc(var))   
             nothing
         end
     else
@@ -194,7 +199,6 @@ macro defStochasticVar(m, x, extra...)
             push!(refcall.args, esc(idxvar))
         end
         tup = Expr(:tuple, [esc(x) for x in idxvars]...)
-        # code = :( $(refcall) = StochasticVariable($m, $lb, $ub, $t, $(string(var.args[1])), $(tup)...) )
         code = :( $(refcall) = StochasticVariable($m, $lb, $ub, $t, tuple($(string(var.args[1])), $(tup)...)) )
         for (idxvar, idxset) in zip(reverse(idxvars),reverse(idxsets))
             code = quote
@@ -205,11 +209,13 @@ macro defStochasticVar(m, x, extra...)
         end
 
         mac = Expr(:macrocall,symbol("@genStochDict"),varname,:Variable,idxsets...)
+        addVarDict = :( $(m).ext[:Stochastic].vardict[$(quot(var.args[1]))] = $varname )   
         addDict = :( push!($(m).dictList, $varname) )
         code = quote
             $mac
             $code
             $addDict
+            $addVarDict
             nothing
         end
         return code
