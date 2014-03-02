@@ -33,8 +33,6 @@ export
     @addConstraint, @defVar,
     @defConstrRef, @setObjective, addToExpression
 
-pushchild!(m::Model, block) = push!(getStochastic(m).children, block)
-
 type StochasticData
     id
     children::Vector{Model}
@@ -66,15 +64,14 @@ end
 
 parent(m::Model) = getStochastic(m).parent
 children(m::Model) = getStochastic(m).children
+variables(m::Model) = getStochastic(m).vardict
 
 function StochasticBlock(m::Model, id)
     stoch = getStochastic(m)
     ch = StochasticModel(id, Model[], m)
-    pushchild!(m, ch)
+    push!(getStochastic(m).children, block)
     return ch
 end
-
-variables(m::Model) = getStochastic(m).vardict
 
 macro defStochasticVar(m, x, extra...)
     m = esc(m)
