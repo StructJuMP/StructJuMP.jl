@@ -3,7 +3,17 @@ using JuMPStoch
 ######
 # DATA
 ######
-TESTTIME = GEN = WIND = BUS = LIN = 1:2
+NUMSTAGES = 3
+TESTTIME = GEN = WIND = BUS = LIN = GEN = LOAD = 1:2
+NODES = HORIZON = [1]
+FIXEDGENCOST = THETASCALE = COSTSCALE = 1
+Pmax = zeros(2,2)
+np_cap = wind_share = X = V = max_ur = Pgen_init = gen_cost = ones(2)
+rec_bus = snd_bus = bus_gen = bus_load = bus_wind = [1:2]
+wind_total = [1 1]
+node = NODES[1]
+Pload = ones(2,2)
+ref_bus = 1
 
 m = StochasticModel()
 
@@ -16,8 +26,8 @@ s0 = StochasticBlock(m, "Stage 0")
 for it in 1:NUMSTAGES
     st = StochasticBlock(s0, "Stage $it")
     @defStochasticVar(st, 0 <= Pgen[TESTTIME,j=GEN] <= np_cap[j])
-    @defStochasticVar(st, 0 <= Pwind[t=TESTTIME,j=WIND] wind_total[node,t]*wind_share[j])
-    @defStochasticVar(st, -THETASCALE*pi/2 <= theta[TESTTIME,j=BUS] <= THETASCALE*pi/2)
+    @defStochasticVar(st, 0 <= Pwind[t=TESTTIME,j=WIND] <= wind_total[node,t]*wind_share[j])
+    @defStochasticVar(st, -THETASCALE*π/2 <= theta[TESTTIME,j=BUS] <= THETASCALE*π/2)
     @defStochasticVar(st, -Pmax[i] <= P[TESTTIME,i=LIN] <= Pmax[i])
     for t in TESTTIME
         for j in BUS
@@ -30,7 +40,7 @@ for it in 1:NUMSTAGES
         end
         @addConstraint(st, theta[t,ref_bus] == 0)
         for i in LIN
-            @addConstraint(X[i]*P[t,i] - V[i]^2*(theta[t,snd_bus[i]]-theta[t,rec_bus[i]])/THETASCALE == 0)
+            @addConstraint(st, X[i]*P[t,i] - V[i]^2*(theta[t,snd_bus[i]]-theta[t,rec_bus[i]])/THETASCALE == 0)
         end
     end
     # ramp constraints
