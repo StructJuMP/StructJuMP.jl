@@ -4,6 +4,8 @@ import JuMP.JuMPDict
 import JuMP.@gendict
 using JuMP
 
+using MPI
+
 using MathProgBase
 using MathProgBase.MathProgSolverInterface
 
@@ -11,7 +13,7 @@ import Base.parent
 importall Base
 using Base.Meta
 
-export StochasticData, StochasticModel, getStochastic, parent, children, variables, StochasticBlock, @defStochasticVar
+export StochasticData, StochasticModel, getStochastic, parent, children, StochasticBlock
 
 # JuMP rexports
 export
@@ -37,10 +39,9 @@ type StochasticData
     id
     children::Vector{Model}
     parent
-    vardict::Dict
 end
 
-StochasticData() = StochasticData(nothing,Model[],nothing,Dict())
+StochasticData() = StochasticData(nothing,Model[],nothing)
 
 function StochasticModel(;solver=nothing)
     m = Model(solver=solver)
@@ -50,7 +51,7 @@ end
 
 function StochasticModel(id, children, parent)
     m = Model(solver=parent.solver)
-    m.ext[:Stochastic] = StochasticData(id, children, parent,Dict())
+    m.ext[:Stochastic] = StochasticData(id, children, parent)
     return m
 end
 
@@ -64,7 +65,6 @@ end
 
 parent(m::Model) = getStochastic(m).parent
 children(m::Model) = getStochastic(m).children
-variables(m::Model) = getStochastic(m).vardict
 
 function StochasticBlock(m::Model, id)
     stoch = getStochastic(m)
@@ -73,123 +73,107 @@ function StochasticBlock(m::Model, id)
     return ch
 end
 
-macro defStochasticVar(m, x, extra...)
-    m = esc(m)
-    if isexpr(x,:comparison)
-        # we have some bounds
-        if x.args[2] == :>=
-            if length(x.args) == 5
-                error("Use the form lb <= var <= ub instead of ub >= var >= lb")
-            end
-            @assert length(x.args) == 3
-            # lower bounds, no upper
-            lb = esc(x.args[3])
-            ub = Inf
-            var = x.args[1]
-        elseif x.args[2] == :<=
-            if length(x.args) == 5
-                # lb <= x <= u
-                lb = esc(x.args[1])
-                if (x.args[4] != :<=)
-                    error("Expected <= operator")
-                end
-                ub = esc(x.args[5])
-                var = x.args[3]
-            else
-                # x <= u
-                ub = esc(x.args[3])
-                lb = -Inf
-                var = x.args[1]
-            end
-        end
-    else
-        var = x
-        lb = -Inf
-        ub = Inf
+function fill_sparse_data(m::Model, idx_set::Vector{Int})
+    numRows = length(idx_set)
+
+    # get a vague idea of how large submatrices will be
+    nnz = 0
+    for c in idx_set
+        nnz += length(m.linconstr[c].terms.coeffs)
     end
-    t = JuMP.CONTINUOUS
-    if length(extra) > 0
-        gottype = 0
-        if extra[1] == :Int || extra[1] == :Bin
-            gottype = 1
-            if extra[1] == :Int
-                t = JuMP.INTEGER
-            else
-                if lb != -Inf || ub != Inf
-                    error("Bounds may not be specified for binary variables. These are always taken to have a lower bound of 0 and upper bound of 1.")
-                end
-                t = JuMP.INTEGER
-                lb = 0.0
-                ub = 1.0
+
+    nnzs      = Dict{JuMP.Model, Int}()
+    rowptrs   = Dict{JuMP.Model, Vector{Int}}()
+    colvals   = Dict{JuMP.Model, Vector{Int}}()
+    rownzvals = Dict{JuMP.Model, Vector{Float64}}()
+    tmprows   = Dict{JuMP.Model, JuMP.IndexedVector}()
+    for anc in ancestors
+        nnzs[anc] = 0
+        rowptrs[anc]   = Array(Int,num+1)
+        colvals[anc] = Int[]
+        sizehint(colvals[anc], nnz)
+        eq_rownzvals[anc] = Float64[]
+        sizehint(rownzvals[anc], nnz)
+        tmprows[anc] = IndexedVector(Float64, anc.numCols)
+    end
+
+    for c in idx_set
+        coeffs = m.linconstr[c].terms.coeffs
+        vars = m.linconstr[c].terms.vars
+        for (it,ind) in enumerate(coeffs)
+            addelt!(tmprows[vars[it].m], vars[it].m, coeffs[ind])
+        end
+        for anc in ancestors
+            tmprow = tmprows[anc]
+            for i in 1:tmprow.nnz
+                nnzs[anc] += 1
+                idx = tmprow.nzidx[i]
+                push!(colvals[anc], idx)
+                push!(rownzvals[anc], tmprow.elts[idx])
             end
         end
-        if length(extra) - gottype == 3
-            # adding variable to existing constraints
-            objcoef = esc(extra[1+gottype])
-            cols = esc(extra[2+gottype])
-            coeffs = esc(extra[3+gottype])
-            if !isa(var,Symbol)
-                error("Cannot create multiple variables when adding to existing constraints")
-            end
-            return quote
-                $(esc(var)) = Variable($m,$lb,$ub,$t,$objcoef,$cols,$coeffs,name=$(string(var)))
-                nothing
-            end
-        elseif length(extra) - gottype != 0
-            error("Syntax error in defVar")
+        map(empty!, tmprows)
+    end
+
+    mats = Array(SparseMatrixCSC, length(ancestors))
+    for (it,anc) in enumerate(ancestors)
+        rowptrs[anc][num+1]   = nnzs[anc] + 1
+        mats[it] = SparseMatrixCSC(anc.numCols, 
+                                    numRows, 
+                                    rowptrs[anc], 
+                                    colval[anc], 
+                                    rownzval[anc])
+    end
+
+end
+
+# ancestors[1] = current model
+constructMatrices(m::Model) = constructMatrices(Model[m])
+function constructMatrices(ancestors::Vector{Model})
+    m = ancestors[1]
+    # determine number of inequalities and equalities
+    eq_idx   = Int[]
+    sizehint(eq_idx, numRows)
+    ineq_idx = Int[]
+    sizehint(ineq_idx, numRows)
+    for it in 1:numRows
+        if m.linconstr[it].lb == m.linconstr[it].ub
+            push!(eq_idx, it)
+        else
+            push!(ineq_idx, it)
         end
     end
 
-    #println("lb: $lb ub: $ub var: $var")
-    if isa(var,Symbol)
-        # easy case
-        return quote
-            $(esc(var)) = Variable($m,$lb,$ub,$t,$(string(var)))
-            $(m).ext[:Stochastic].vardict[$(quot(var))] = $(esc(var))   
-            nothing
-        end
-    else
-        if !isexpr(var,:ref)
-            error("Syntax error: Expected $var to be of form var[...]")
-        end
-        varname = esc(var.args[1])
-        idxvars = {}
-        idxsets = {}
-        refcall = Expr(:ref,varname)
-        for s in var.args[2:end]
-            if isa(s,Expr) && s.head == :(=)
-                idxvar = s.args[1]
-                idxset = esc(s.args[2])
-            else
-                idxvar = gensym()
-                idxset = esc(s)
-            end
-            push!(idxvars, idxvar)
-            push!(idxsets, idxset)
-            push!(refcall.args, esc(idxvar))
-        end
-        tup = Expr(:tuple, [esc(x) for x in idxvars]...)
-        code = :( $(refcall) = Variable($m, $lb, $ub, $t) )
-        # code = :( $(refcall) = Variable($m, $lb, $ub, $t, tuple($(string(var.args[1])), $(tup)...)) )
-        for (idxvar, idxset) in zip(reverse(idxvars),reverse(idxsets))
-            code = quote
-                for $(esc(idxvar)) in $idxset
-                    $code
-                end
-            end
-        end
+    eq_mats   = fill_sparse_data(m, eq_idx)
+    ineq_mats = fill_sparse_data(m, ineq_idx)
 
-        mac = Expr(:macrocall,symbol("@gendict"),varname,:Variable,idxsets...)
-        addVarDict = :( $(m).ext[:Stochastic].vardict[$(quot(var.args[1]))] = $varname )   
-        addDict = :( push!($(m).dictList, $varname) )
-        code = quote
-            $mac
-            $code
-            $addDict
-            $addVarDict
-            nothing
-        end
-        return code
+    eq_rhs  = m.colLower[eq_idx]
+    ineq_lb = m.colLower[ineq_idx]
+    ineq_ub = m.colUpper[ineq_idx]
+
+    return eq_mats, eq_rhs, ineq_mats, ineq_lb, ineq_ub
+end
+
+function prepStochasticConstrMatrix(m::Model)
+
+    stoch = getStochastic(m)
+    A0, b0, C0, d0_l, d0_u  = constructMatrices(m)
+
+    for child in children(m)
+        A_i, b_i, C_i, di_l, di_u = constructMatrices([m, child])
+    end
+
+end
+
+function solveStochastic(m::Model)
+    stoch = getStochastic(m)
+    m.solver = PipsSolver()
+    m.internalModelLoaded = false
+
+    # build MPI layer
+
+    for child in children(m)
+        setupChildCallback(m,child)
     end
 end
 
