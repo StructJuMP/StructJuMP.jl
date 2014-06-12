@@ -1,29 +1,27 @@
-import MPI
+libpips = dlopen("/home/huchette/PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
 
-# libpips = dlopen("/home/huchette/PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
-
-function get_sparse_data(m::Model, idx_set::Vector{Int})
+function get_sparse_data(owner::Model, interest::Model, idx_set::Vector{Int})
     numRows = length(idx_set)
     rowptr   = Array(Int, numRows+1)
 
     # get a vague idea of how large submatrices will be
     nnz = 0
     for c in idx_set
-        nnz += length(m.linconstr[c].terms.coeffs)
+        nnz += length(owner.linconstr[c].terms.coeffs)
     end
 
     colval   = Int[]
     rownzval = Float64[]
 
     nnz = 0
-    tmprow   = JuMP.IndexedVector(Float64, m.numCols)
+    tmprow   = JuMP.IndexedVector(Float64, owner.numCols)
     tmpelts = tmprow.elts
     tmpnzidx = tmprow.nzidx
     for c in idx_set
-        coeffs = m.linconstr[c].terms.coeffs
-        vars = m.linconstr[c].terms.vars
+        coeffs = owner.linconstr[c].terms.coeffs
+        vars = owner.linconstr[c].terms.vars
         for (it,ind) in enumerate(coeffs)
-            if vars[it].m == m
+            if vars[it].m == interest
                 addelt!(tmprow, vars[it].col, coeffs[ind])
             end
         end
@@ -68,6 +66,7 @@ function pips_solve(m::Model)
                         (:fD, "ineq")]
         @eval begin
             function $(name)(user_data, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
+                row_ptr, colvals, rownzvals = getSparseData()
                 unsafe_copy!(krowM, symbol(typ*"_rowptr[id]"),    n_eq+1)
                 unsafe_copy!(jcolM, symbol(typ*"_colvals[id]"),   symbol("length("*typ*"_colvals[id])"))
                 unsafe_copy!(M,     symbol(typ*"_rownzvals[id]"), symbol("length("*typ*"_colvals[id])"))

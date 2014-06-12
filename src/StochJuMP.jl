@@ -4,6 +4,8 @@ import JuMP.JuMPDict
 import JuMP.@gendict
 using JuMP
 
+import MPI
+
 using MathProgBase
 using MathProgBase.MathProgSolverInterface
 
