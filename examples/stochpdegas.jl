@@ -1,4 +1,4 @@
-using JuMPStoch
+using StochJuMP
 
 TIME = 1:Nt
 TIMEm = 1:(Nt-1)

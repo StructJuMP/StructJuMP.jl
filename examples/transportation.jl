@@ -1,4 +1,4 @@
-using JuMPStoch
+using StochJuMP
 
 m = StochasticModel()
 

@@ -1,10 +1,8 @@
-module JuMPStoch
+module StochJuMP
 
 import JuMP.JuMPDict
 import JuMP.@gendict
 using JuMP
-
-using MPI
 
 using MathProgBase
 using MathProgBase.MathProgSolverInterface
@@ -39,9 +37,10 @@ type StochasticData
     id
     children::Vector{Model}
     parent
+    num_scen::Int
 end
 
-StochasticData() = StochasticData(nothing,Model[],nothing)
+StochasticData() = StochasticData(nothing,Model[],nothing,0)
 
 function StochasticModel(;solver=nothing)
     m = Model(solver=solver)
@@ -51,7 +50,7 @@ end
 
 function StochasticModel(id, children, parent)
     m = Model(solver=parent.solver)
-    m.ext[:Stochastic] = StochasticData(id, children, parent)
+    m.ext[:Stochastic] = StochasticData(id, children, parent,0)
     return m
 end
 
@@ -65,6 +64,7 @@ end
 
 parent(m::Model) = getStochastic(m).parent
 children(m::Model) = getStochastic(m).children
+num_scenarios(m::Model) = getStochastic(m).num_scen
 
 function StochasticBlock(m::Model, id)
     stoch = getStochastic(m)
@@ -118,20 +118,16 @@ function fill_sparse_data(m::Model, idx_set::Vector{Int})
     mats = Array(SparseMatrixCSC, length(ancestors))
     for (it,anc) in enumerate(ancestors)
         rowptrs[anc][num+1]   = nnzs[anc] + 1
-        mats[it] = SparseMatrixCSC(anc.numCols, 
-                                    numRows, 
-                                    rowptrs[anc], 
-                                    colval[anc], 
+        mats[it] = SparseMatrixCSC(anc.numCols,
+                                    numRows,
+                                    rowptrs[anc],
+                                    colval[anc],
                                     rownzval[anc])
     end
-
+    return mats
 end
 
-# ancestors[1] = current model
-constructMatrices(m::Model) = constructMatrices(Model[m])
-function constructMatrices(ancestors::Vector{Model})
-    m = ancestors[1]
-    # determine number of inequalities and equalities
+function getConstraintTypes(m::Model)
     eq_idx   = Int[]
     sizehint(eq_idx, numRows)
     ineq_idx = Int[]
@@ -143,6 +139,15 @@ function constructMatrices(ancestors::Vector{Model})
             push!(ineq_idx, it)
         end
     end
+    return eq_idx, ineq_idx
+end
+
+# ancestors[1] = current model
+constructMatrices(m::Model) = constructMatrices(Model[m])
+function constructMatrices(ancestors::Vector{Model})
+    m = ancestors[1]
+    # determine number of inequalities and equalities
+    eq_idx, ineq_idx = getConstraintTypes(m)
 
     eq_mats   = fill_sparse_data(m, eq_idx)
     ineq_mats = fill_sparse_data(m, ineq_idx)
