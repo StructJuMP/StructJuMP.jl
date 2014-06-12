@@ -4,6 +4,8 @@ import JuMP.JuMPDict
 import JuMP.@gendict
 using JuMP
 
+import MPI
+
 using MathProgBase
 using MathProgBase.MathProgSolverInterface
 
@@ -73,59 +75,59 @@ function StochasticBlock(m::Model, id)
     return ch
 end
 
-function fill_sparse_data(m::Model, idx_set::Vector{Int})
-    numRows = length(idx_set)
+# function fill_sparse_data(m::Model, idx_set::Vector{Int})
+#     numRows = length(idx_set)
 
-    # get a vague idea of how large submatrices will be
-    nnz = 0
-    for c in idx_set
-        nnz += length(m.linconstr[c].terms.coeffs)
-    end
+#     # get a vague idea of how large submatrices will be
+#     nnz = 0
+#     for c in idx_set
+#         nnz += length(m.linconstr[c].terms.coeffs)
+#     end
 
-    nnzs      = Dict{JuMP.Model, Int}()
-    rowptrs   = Dict{JuMP.Model, Vector{Int}}()
-    colvals   = Dict{JuMP.Model, Vector{Int}}()
-    rownzvals = Dict{JuMP.Model, Vector{Float64}}()
-    tmprows   = Dict{JuMP.Model, JuMP.IndexedVector}()
-    for anc in ancestors
-        nnzs[anc] = 0
-        rowptrs[anc]   = Array(Int,num+1)
-        colvals[anc] = Int[]
-        sizehint(colvals[anc], nnz)
-        eq_rownzvals[anc] = Float64[]
-        sizehint(rownzvals[anc], nnz)
-        tmprows[anc] = IndexedVector(Float64, anc.numCols)
-    end
+#     nnzs      = Dict{JuMP.Model, Int}()
+#     rowptrs   = Dict{JuMP.Model, Vector{Int}}()
+#     colvals   = Dict{JuMP.Model, Vector{Int}}()
+#     rownzvals = Dict{JuMP.Model, Vector{Float64}}()
+#     tmprows   = Dict{JuMP.Model, JuMP.IndexedVector}()
+#     for anc in ancestors
+#         nnzs[anc] = 0
+#         rowptrs[anc]   = Array(Int,num+1)
+#         colvals[anc] = Int[]
+#         sizehint(colvals[anc], nnz)
+#         eq_rownzvals[anc] = Float64[]
+#         sizehint(rownzvals[anc], nnz)
+#         tmprows[anc] = IndexedVector(Float64, anc.numCols)
+#     end
 
-    for c in idx_set
-        coeffs = m.linconstr[c].terms.coeffs
-        vars = m.linconstr[c].terms.vars
-        for (it,ind) in enumerate(coeffs)
-            addelt!(tmprows[vars[it].m], vars[it].m, coeffs[ind])
-        end
-        for anc in ancestors
-            tmprow = tmprows[anc]
-            for i in 1:tmprow.nnz
-                nnzs[anc] += 1
-                idx = tmprow.nzidx[i]
-                push!(colvals[anc], idx)
-                push!(rownzvals[anc], tmprow.elts[idx])
-            end
-        end
-        map(empty!, tmprows)
-    end
+#     for c in idx_set
+#         coeffs = m.linconstr[c].terms.coeffs
+#         vars = m.linconstr[c].terms.vars
+#         for (it,ind) in enumerate(coeffs)
+#             addelt!(tmprows[vars[it].m], vars[it].m, coeffs[ind])
+#         end
+#         for anc in ancestors
+#             tmprow = tmprows[anc]
+#             for i in 1:tmprow.nnz
+#                 nnzs[anc] += 1
+#                 idx = tmprow.nzidx[i]
+#                 push!(colvals[anc], idx)
+#                 push!(rownzvals[anc], tmprow.elts[idx])
+#             end
+#         end
+#         map(empty!, tmprows)
+#     end
 
-    mats = Array(SparseMatrixCSC, length(ancestors))
-    for (it,anc) in enumerate(ancestors)
-        rowptrs[anc][num+1]   = nnzs[anc] + 1
-        mats[it] = SparseMatrixCSC(anc.numCols,
-                                    numRows,
-                                    rowptrs[anc],
-                                    colval[anc],
-                                    rownzval[anc])
-    end
-    return mats
-end
+#     mats = Array(SparseMatrixCSC, length(ancestors))
+#     for (it,anc) in enumerate(ancestors)
+#         rowptrs[anc][num+1]   = nnzs[anc] + 1
+#         mats[it] = SparseMatrixCSC(anc.numCols,
+#                                     numRows,
+#                                     rowptrs[anc],
+#                                     colval[anc],
+#                                     rownzval[anc])
+#     end
+#     return mats
+# end
 
 function getConstraintTypes(m::Model)
     eq_idx   = Int[]
@@ -142,44 +144,34 @@ function getConstraintTypes(m::Model)
     return eq_idx, ineq_idx
 end
 
-# ancestors[1] = current model
-constructMatrices(m::Model) = constructMatrices(Model[m])
-function constructMatrices(ancestors::Vector{Model})
-    m = ancestors[1]
-    # determine number of inequalities and equalities
-    eq_idx, ineq_idx = getConstraintTypes(m)
+# # ancestors[1] = current model
+# constructMatrices(m::Model) = constructMatrices(Model[m])
+# function constructMatrices(ancestors::Vector{Model})
+#     m = ancestors[1]
+#     # determine number of inequalities and equalities
+#     eq_idx, ineq_idx = getConstraintTypes(m)
 
-    eq_mats   = fill_sparse_data(m, eq_idx)
-    ineq_mats = fill_sparse_data(m, ineq_idx)
+#     eq_mats   = fill_sparse_data(m, eq_idx)
+#     ineq_mats = fill_sparse_data(m, ineq_idx)
 
-    eq_rhs  = m.colLower[eq_idx]
-    ineq_lb = m.colLower[ineq_idx]
-    ineq_ub = m.colUpper[ineq_idx]
+#     eq_rhs  = m.colLower[eq_idx]
+#     ineq_lb = m.colLower[ineq_idx]
+#     ineq_ub = m.colUpper[ineq_idx]
 
-    return eq_mats, eq_rhs, ineq_mats, ineq_lb, ineq_ub
-end
+#     return eq_mats, eq_rhs, ineq_mats, ineq_lb, ineq_ub
+# end
 
-function prepStochasticConstrMatrix(m::Model)
+# function prepStochasticConstrMatrix(m::Model)
 
-    stoch = getStochastic(m)
-    A0, b0, C0, d0_l, d0_u  = constructMatrices(m)
+#     stoch = getStochastic(m)
+#     A0, b0, C0, d0_l, d0_u  = constructMatrices(m)
 
-    for child in children(m)
-        A_i, b_i, C_i, di_l, di_u = constructMatrices([m, child])
-    end
+#     for child in children(m)
+#         A_i, b_i, C_i, di_l, di_u = constructMatrices([m, child])
+#     end
 
-end
+# end
 
-function solveStochastic(m::Model)
-    stoch = getStochastic(m)
-    m.solver = PipsSolver()
-    m.internalModelLoaded = false
-
-    # build MPI layer
-
-    for child in children(m)
-        setupChildCallback(m,child)
-    end
-end
+include("pips.jl")
 
 end

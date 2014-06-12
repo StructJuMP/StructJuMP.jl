@@ -1,6 +1,42 @@
-import MPI
-
 libpips = dlopen("/home/huchette/PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
+
+function get_sparse_data(owner::Model, interest::Model, idx_set::Vector{Int})
+    numRows = length(idx_set)
+    rowptr   = Array(Int, numRows+1)
+
+    # get a vague idea of how large submatrices will be
+    nnz = 0
+    for c in idx_set
+        nnz += length(owner.linconstr[c].terms.coeffs)
+    end
+
+    colval   = Int[]
+    rownzval = Float64[]
+
+    nnz = 0
+    tmprow   = JuMP.IndexedVector(Float64, owner.numCols)
+    tmpelts = tmprow.elts
+    tmpnzidx = tmprow.nzidx
+    for c in idx_set
+        coeffs = owner.linconstr[c].terms.coeffs
+        vars = owner.linconstr[c].terms.vars
+        for (it,ind) in enumerate(coeffs)
+            if vars[it].m == interest
+                addelt!(tmprow, vars[it].col, coeffs[ind])
+            end
+        end
+        for i in 1:tmprow.nnz
+            nnz += 1
+            idx = tmpnzidx[i]
+            push!(colval, idx)
+            push!(rownzval, tmpelts[idx])
+        end
+        empty!(tmprow)
+    end
+    rowptr[numRows+1] = nnz + 1
+    
+    return rowptr, colval, rownzval
+end
 
 function pips_solve(m::Model)
     @assert parent(m) == nothing # make sure this is master problem
@@ -30,6 +66,7 @@ function pips_solve(m::Model)
                         (:fD, "ineq")]
         @eval begin
             function $(name)(user_data, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
+                row_ptr, colvals, rownzvals = getSparseData()
                 unsafe_copy!(krowM, symbol(typ*"_rowptr[id]"),    n_eq+1)
                 unsafe_copy!(jcolM, symbol(typ*"_colvals[id]"),   symbol("length("*typ*"_colvals[id])"))
                 unsafe_copy!(M,     symbol(typ*"_rownzvals[id]"), symbol("length("*typ*"_colvals[id])"))
@@ -47,6 +84,7 @@ function pips_solve(m::Model)
             function $(name)(user_data, id::Cint, nnz::Ptr{Cint})
                 unsafe_store!(nnz, $(lngth), 1)
                 return C_NULL
+            end
         end
     end
 
