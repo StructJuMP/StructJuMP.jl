@@ -1,6 +1,44 @@
 import MPI
 
-libpips = dlopen("/home/huchette/PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
+# libpips = dlopen("/home/huchette/PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
+
+function get_sparse_data(m::Model, idx_set::Vector{Int})
+    numRows = length(idx_set)
+    rowptr   = Array(Int, numRows+1)
+
+    # get a vague idea of how large submatrices will be
+    nnz = 0
+    for c in idx_set
+        nnz += length(m.linconstr[c].terms.coeffs)
+    end
+
+    colval   = Int[]
+    rownzval = Float64[]
+
+    nnz = 0
+    tmprow   = JuMP.IndexedVector(Float64, m.numCols)
+    tmpelts = tmprow.elts
+    tmpnzidx = tmprow.nzidx
+    for c in idx_set
+        coeffs = m.linconstr[c].terms.coeffs
+        vars = m.linconstr[c].terms.vars
+        for (it,ind) in enumerate(coeffs)
+            if vars[it].m == m
+                addelt!(tmprow, vars[it].col, coeffs[ind])
+            end
+        end
+        for i in 1:tmprow.nnz
+            nnz += 1
+            idx = tmpnzidx[i]
+            push!(colval, idx)
+            push!(rownzval, tmpelts[idx])
+        end
+        empty!(tmprow)
+    end
+    rowptr[numRows+1] = nnz + 1
+    
+    return rowptr, colval, rownzval
+end
 
 function pips_solve(m::Model)
     @assert parent(m) == nothing # make sure this is master problem
@@ -47,6 +85,7 @@ function pips_solve(m::Model)
             function $(name)(user_data, id::Cint, nnz::Ptr{Cint})
                 unsafe_store!(nnz, $(lngth), 1)
                 return C_NULL
+            end
         end
     end
 
