@@ -1,9 +1,25 @@
-libpips = dlopen("/home/huchette/PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
+# libpips = dlopen("/home/huchette/PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
 
 cint(a::Int) = convert(Cint,a)
 vcint(a::Vector{Int}) = convert(Vector{Cint},a)
 
-function get_sparse_data(owner::Model, interest::Model, idx_set::Vector{Int})
+function getConstraintTypes(m::JuMP.Model)
+    numRows = length(m.linconstr)
+    eq_idx   = Int[]
+    sizehint(eq_idx, numRows)
+    ineq_idx = Int[]
+    sizehint(ineq_idx, numRows)
+    for it in 1:numRows
+        if m.linconstr[it].lb == m.linconstr[it].ub
+            push!(eq_idx, it)
+        else
+            push!(ineq_idx, it)
+        end
+    end
+    return eq_idx, ineq_idx
+end
+
+function get_sparse_data(owner::JuMP.Model, interest::JuMP.Model, idx_set::Vector{Int})
     numRows = length(idx_set)
     rowptr   = Array(Int, numRows+1)
 
@@ -20,12 +36,13 @@ function get_sparse_data(owner::Model, interest::Model, idx_set::Vector{Int})
     tmprow   = JuMP.IndexedVector(Float64, owner.numCols)
     tmpelts = tmprow.elts
     tmpnzidx = tmprow.nzidx
-    for c in idx_set
+    for (it,c) in enumerate(idx_set)
+        rowptr[it] = nnz + 1
         coeffs = owner.linconstr[c].terms.coeffs
         vars = owner.linconstr[c].terms.vars
         for (it,ind) in enumerate(coeffs)
             if vars[it].m == interest
-                addelt!(tmprow, vars[it].col, coeffs[ind])
+                JuMP.addelt!(tmprow, vars[it].col, ind)
             end
         end
         for i in 1:tmprow.nnz
@@ -34,43 +51,57 @@ function get_sparse_data(owner::Model, interest::Model, idx_set::Vector{Int})
             push!(colval, idx)
             push!(rownzval, tmpelts[idx])
         end
-        empty!(tmprow)
+        JuMP.empty!(tmprow)
     end
     rowptr[numRows+1] = nnz + 1
     
     return rowptr, colval, rownzval
 end
 
-function get_sparse_Q(m::Model)
+function get_sparse_Q(m::JuMP.Model)
     n = m.numCols
-    qobj = m.obj
     vars1 = Int[x.col for x in m.obj.qvars1]
     vars2 = Int[x.col for x in m.obj.qvars2]
-    coeff = m.obj.coeffs
-    Q = sparse(vars1, vars2, coeff)
-    @assert istriu(Q)
-    return Q.rowptr, Q.colval, Q.nzval
+    coeff = m.obj.qcoeffs
+    Q = sparse(vars1, vars2, coeff, n, n)
+    istriu(Q) && (Q = Q')
+    @assert istril(Q)
+    return Q.colptr, Q.rowval, Q.nzval
 end
 
-function pips_solve(m::Model)
-    @assert parent(m) == nothing # make sure this is master problem
+function pips_solve(master::JuMP.Model)
+    @assert getparent(master) == nothing # make sure this is master problem
+    @assert length(getchildren(master)) == 1 # only one form of subproblem (at this point)
+
+    child = getchildren(master)[1]
 
     # MPI data
+    MPI.init()
     comm = MPI.COMM_WORLD
+
     root = 0
     size = MPI.size(comm)
     rank = MPI.rank(comm)
 
-    numScens = num_scenarios(m)
+    numScens = num_scenarios(master)
     scenPerRank = iceil(numScens/size)
 
-    rank_to_model(id::Cint) = children(m)[rem1(id, scenPerRank)]
+    # rank_to_model(id::Cint) = getchildren(m)[rem1(id, scenPerRank)]
 
-    f, rowlb, rowub = JuMP.prepProblemBounds(m)
+    f_m, rowlb_m, rowub_m = JuMP.prepProblemBounds(master)
+    f_c, rowlb_c, rowub_c = JuMP.prepProblemBounds(child)
 
-    eq_idx, ineq_idx = getConstraintTypes(m)
-    n_eq, n_ineq = length(eq_idx), length(ineq_idx)
-    rlb, rub = rowlb[eq_idx], rowub[ineq_idx]
+    eq_idx_m, ineq_idx_m = getConstraintTypes(master)
+    eq_idx_c, ineq_idx_c = getConstraintTypes(child)
+
+    n_eq_m, n_ineq_m = length(eq_idx_m), length(ineq_idx_m)
+    n_eq_c, n_ineq_c = length(eq_idx_c), length(ineq_idx_c)
+
+    eq_lb_m, eq_ub_m = rowlb_m[eq_idx_m], rowub_m[eq_idx_m]
+    eq_lb_c, eq_ub_c = rowlb_m[eq_idx_c], rowub_c[eq_idx_c]
+
+    ineq_lb_m, ineq_ub_m = rowlb_m[ineq_idx_m], rowub_m[ineq_idx_m]
+    ineq_lb_c, ineq_ub_c = rowlb_c[ineq_idx_c], rowub_c[ineq_idx_c]
 
     #####################################################
     # Callback functions for matrices, vectors, and nnz's
@@ -78,69 +109,170 @@ function pips_solve(m::Model)
 
     # TODO: cache sparsity information somewhere so we don't have to compute twice
     function fQ(user_data, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
-        tar = rank_to_model(m,id)
-        rowptr, colvals, rownzvals = get_sparse_Q(tar)
-        unsafe_copy!(krowM, vcint(rowptr), tar.numCols+1)
-        unsafe_copy!(jcolM, vcint(colvals), length(colvals))
+        host = (id == root ? master : child)
+        rowptr, colvals, rownzvals = get_sparse_Q(host)
+        unsafe_copy!(krowM, vcint(rowptr.-1), host.numCols+1)
+        unsafe_copy!(jcolM, vcint(colvals.-1), length(colvals))
         unsafe_copy!(M, rownzvals, length(rownzvals))
         return nothing
     end
 
     function fnnzQ(user_data, id::Cint, nnz::Ptr{Cint})
-        tar = rank_to_model(m,id)
-        rowptr, colvals, rownzvals = get_sparse_Q(tar)
+        host = (id == root ? master : child)
+        _, colvals, _ = get_sparse_Q(tar)
         unsafe_store!(nnz, cint(length(colvals)), 1)
         return nothing
     end
 
-    for (name1, name2, typ) in [(:fA, :fnnzA, "eq"),
-                                (:fB, :fnnzB, "eq"), 
-                                (:fC, :fnnzC, "ineq"), 
-                                (:fD, :fnnzD, "ineq")]
-        @eval begin
-            function $(name1)(user_data, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
-                rowptr, colvals, rownzvals = get_sparse_data(m, rank_to_model(m,id), symbol(typ*"_idx"))
-                unsafe_copy!(krowM, vcint(symbol(typ*"_rowptr[id]")),    n_eq+1)
-                unsafe_copy!(jcolM, vcint(symbol(typ*"_colvals[id]")),   symbol("length("*typ*"_colvals[id])"))
-                unsafe_copy!(M,     vcint(symbol(typ*"_rownzvals[id]")), symbol("length("*typ*"_colvals[id])"))
-                return nothing
-            end
-            function $(name2)(user_data, id::Cint, nnz::Ptr{Cint})
-                row_ptr, colvals, rownzvals = get_sparse_data(m, rank_to_model(m,id), symbol(typ*"_idx"))
-                unsafe_store!(nnz, cint($(lngth)), 1)
-                return nothing
-            end
+    function fA(user_data, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
+        host = (id == root ? master : child)
+        rowptr, colvals, rownzvals = get_sparse_data(host, master, eq_idx_m)
+        unsafe_copy!(krowM, vcint(rowptr.-1),    n_eq+1)
+        unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
+        unsafe_copy!(M,     vcint(rownzvals), length(colvals))
+        return nothing
+    end
+
+    function fB(user_data, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
+        id == root && return nothing
+        rowptr, colvals, rownzvals = get_sparse_data(child, child, eq_idx_c)
+        unsafe_copy!(krowM, vcint(rowptr.-1),    n_eq+1)
+        unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
+        unsafe_copy!(M,     vcint(rownzvals), length(colvals))
+        return nothing
+    end
+
+    function fC(user_data, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
+        host = (id == root ? master : child)
+        rowptr, colvals, rownzvals = get_sparse_data(host, master, ineq_idx_m)
+        unsafe_copy!(krowM, vcint(rowptr.-1),    n_eq+1)
+        unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
+        unsafe_copy!(M,     vcint(rownzvals), length(colvals))
+        return nothing
+    end
+
+    function fD(user_data, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
+        id == root && return nothing
+        rowptr, colvals, rownzvals = get_sparse_data(child, child, ineq_idx_m)
+        unsafe_copy!(krowM, vcint(rowptr.-1),    n_eq+1)
+        unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
+        unsafe_copy!(M,     vcint(rownzvals), length(colvals))
+        return nothing
+    end
+
+    function fnnzA(user_data, id::Cint, nnz::Ptr{Cint})
+        host = (id == root ? master : child)
+        _, colvals, _ = get_sparse_data(host, master, eq_idx_m)
+        unsafe_store!(nnz, cint(length(colvals)), 1)
+        return nothing
+    end
+
+    function fnnzB(user_data, id::Cint, nnz::Ptr{Cint})
+        if id == root
+            unsafe_store!(nnz, cint(0), 1)
+        else
+            _, colvals, _ = get_sparse_data(child, child, eq_idx_c)
+            unsafe_store!(nnz, cint(length(colvals)), 1)
+        end
+        return nothing
+    end
+
+    function fnnzC(user_data, id::Cint, nnz::Ptr{Cint})
+        host = (id == root ? master : child)
+        _, colvals, _ = get_sparse_data(host, master, ineq_idx_m)
+        unsafe_store!(nnz, cint(length(colvals)), 1)
+        return nothing
+    end
+
+    function fnnzD(user_data, id::Cint, nnz::Ptr{Cint})
+        if id == root
+            unsafe_store!(nnz, cint(0), 1)
+        else
+            _, colvals, _ = get_sparse_data(child, child, ineq_idx_m)
+            unsafe_store!(nnz, cint(length(colvals)), 1)
+        end
+        return nothing
+    end
+
+    if rank == 3
+        println("A:")
+        rowptr, colvals, rownzvals = get_sparse_data(m, m, eq_idx)
+        println("rowptr = $rowptr")
+        println("colvals = $colvals")
+        println("rownzvals = $rownzvals")
+    end
+
+    if rank == 3
+        println("B:")
+        rowptr, colvals, rownzvals = get_sparse_data(m, m, ineq_idx_m)
+        println("rowptr = $rowptr")
+        println("colvals = $colvals")
+        println("rownzvals = $rownzvals")
+    end
+
+    if rank == 3
+        println("C:")
+        rowptr, colvals, rownzvals = get_sparse_data(getchildren(m)[1], m, eq_idx)
+        println("rowptr = $rowptr")
+        println("colvals = $colvals")
+        println("rownzvals = $rownzvals")
+    end
+
+    if rank == 3
+        println("D:")
+        rowptr, colvals, rownzvals = get_sparse_data(getchildren(m)[1], m, ineq_idx_m)
+        println("rowptr = $rowptr")
+        println("colvals = $colvals")
+        println("rownzvals = $rownzvals")
+    end
+
+    function fb(user_data, id::Cint, vec::Ptr{Cdouble}, len::Cint)
+        if id == root
+            @assert len == n_eq_m
+            unsafe_copy!(vec, vcint(eq_rhs_m), len)
+        else
+            @assert len == n_eq_c
+            unsafe_copy!(vec, vcint(eq_rhs_c), len)
         end
     end
 
-    for (name, lngth, stor) in [(:fb, :n_eq, :eq_rhs),
-                                (:fc, :(length(f)), :f)]
+    function fc(user_data, id::Cint, vec::Ptr{Cdouble}, len::Cint)
+        if id == root
+            @assert len == n_eq_m
+            unsafe_copy!(vec, vcint(f_m), len)
+        else
+            @assert len == n_eq_c
+            unsafe_copy!(vec, vcint(f_c), len)
+        end
+    end
+
+    for (name,src1,src2) in [(:fclow, :rlb_m, :rlb_c),
+                             (:fcupp, :rub_m, :rub_c),
+                             (:fxlow, :(master.colLower), :(child.colUpper)),
+                             (:fxupp, :(master.colUpper), :(child.colUpper))]
         @eval begin
             function $(name)(user_data, id::Cint, vec::Ptr{Cdouble}, len::Cint)
-                @assert len == $(lngth)
-                unsafe_copy!(vec, vcint($(stor)), len)
+                src = (id == root ? $src1 : $src2)
+                @assert len == length(src)
+                for it in 1:len
+                    val = (isinf(src)[it]) ? 0.0 : src[it]
+                    unsafe_store!(vec, convert(Cdouble,val), it)
+                end
                 return nothing
             end
         end
     end
 
-    for (name1, name2, lngth, stor) in [(:fclow, :ficlow, :n_ineq, :rlb),
-                                        (:fcupp, :ficupp, :n_ineq, :rub),
-                                        (:fxlow, :fixlow, :(m.numCols), :(m.colLower)),
-                                        (:fxupp, :fixupp, :(m.numCols), :(m.colUpper))]
+    for (name,src1,src2) in [(:ficlow, :rlb_m, :rlb_c),
+                             (:ficupp, :rub_m, :rub_c),
+                             (:fixlow, :(master.colLower), :(child.colUpper)),
+                             (:fixupp, :(master.colUpper), :(child.colUpper))]
         @eval begin
-            function $(name1)(user_data, id::Cint, vec::Ptr{Cdouble}, len::Cint)
-                @assert len == $(lngth)
+            function $(name)(user_data, id::Cint, vec::Ptr{Cdouble}, len::Cint)
+                src = (id == root ? $src1 : $src2)
+                @assert len == length(src)
                 for it in 1:len
-                    val = (isinf($stor)[it]) ? 0.0 : $(stor)[it]
-                    unsafe_store!(vec, convert(Cdouble,val), it)
-                end
-                return nothing
-            end
-            function $(name2)(user_data, id::Cint, vec::Ptr{Cdouble}, len::Cint)
-                @assert len == $(lngth)
-                for it in 1:len
-                    val = (isinf($(stor)[it]) ? 0.0 : 1.0)
+                    val = (isinf(src)[it]) ? 0.0 : 1.0
                     unsafe_store!(vec, convert(Cdouble,val), it)
                 end
                 return nothing
@@ -148,61 +280,62 @@ function pips_solve(m::Model)
         end
     end
 
-    ccall((libpips,:PIPSSolve), Void, (Ptr{Void},  # MPI_COMM
-                                       Cint,       # numScens
-                                       Cint,       # nx0
-                                       Cint,       # my0
-                                       Cint,       # mz0
-                                       Cint,       # nx
-                                       Cint,       # my
-                                       Cint,       # mz
-                                       Ptr{Void},  # Q
-                                       Ptr{Void},  # nnzQ
-                                       Ptr{Void},  # c
-                                       Ptr{Void},  # A
-                                       Ptr{Void},  # nnzA
-                                       Ptr{Void},  # B
-                                       Ptr{Void},  # nnzB
-                                       Ptr{Void},  # b
-                                       Ptr{Void},  # C
-                                       Ptr{Void},  # nnzC
-                                       Ptr{Void},  # D
-                                       Ptr{Void},  # nnzD
-                                       Ptr{Void},  # clow
-                                       Ptr{Void},  # iclow
-                                       Ptr{Void},  # cupp
-                                       Ptr{Void},  # icupp
-                                       Ptr{Void},  # xlow
-                                       Ptr{Void},  # ixlow
-                                       Ptr{Void},  # xupp
-                                       Ptr{Void}), # ixupp
-                                      (&comm.fval,       
-                                       cint(numScens),   
-                                       nx0,        
-                                       my0,        
-                                       mz0,        
-                                       nx,         
-                                       my,         
-                                       mz,         
-                                       fQ,         
-                                       fnnzQ,      
-                                       fc,         
-                                       fA,         
-                                       fnnzA,      
-                                       fB,         
-                                       fnnZB,      
-                                       fb,         
-                                       fC,         
-                                       fnnzC,      
-                                       fD,         
-                                       fnnzD,      
-                                       fclow,      
-                                       ficlow,     
-                                       fcupp,      
-                                       ficupp,     
-                                       fxlow,      
-                                       fixlow,     
-                                       fxupp,      
-                                       fixupp))     
+    # val = ccall((:PIPSSolve,libpips), Void, (Ptr{Cint},  # MPI_COMM
+    #                                          Cint,       # numScens
+    #                                          Cint,       # nx0
+    #                                          Cint,       # my0
+    #                                          Cint,       # mz0
+    #                                          Cint,       # nx
+    #                                          Cint,       # my
+    #                                          Cint,       # mz
+    #                                          Ptr{Void},  # Q
+    #                                          Ptr{Void},  # nnzQ
+    #                                          Ptr{Void},  # c
+    #                                          Ptr{Void},  # A
+    #                                          Ptr{Void},  # nnzA
+    #                                          Ptr{Void},  # B
+    #                                          Ptr{Void},  # nnzB
+    #                                          Ptr{Void},  # b
+    #                                          Ptr{Void},  # C
+    #                                          Ptr{Void},  # nnzC
+    #                                          Ptr{Void},  # D
+    #                                          Ptr{Void},  # nnzD
+    #                                          Ptr{Void},  # clow
+    #                                          Ptr{Void},  # iclow
+    #                                          Ptr{Void},  # cupp
+    #                                          Ptr{Void},  # icupp
+    #                                          Ptr{Void},  # xlow
+    #                                          Ptr{Void},  # ixlow
+    #                                          Ptr{Void},  # xupp
+    #                                          Ptr{Void}), # ixupp
+    #                                         (&(comm.fval),       
+    #                                          cint(numScens),   
+    #                                          nx0,        
+    #                                          my0,        
+    #                                          mz0,        
+    #                                          nx,         
+    #                                          my,         
+    #                                          mz,         
+    #                                          fQ,         
+    #                                          fnnzQ,      
+    #                                          fc,         
+    #                                          fA,         
+    #                                          fnnzA,      
+    #                                          fB,         
+    #                                          fnnZB,      
+    #                                          fb,         
+    #                                          fC,         
+    #                                          fnnzC,      
+    #                                          fD,         
+    #                                          fnnzD,      
+    #                                          fclow,      
+    #                                          ficlow,     
+    #                                          fcupp,      
+    #                                          ficupp,     
+    #                                          fxlow,      
+    #                                          fixlow,     
+    #                                          fxupp,      
+    #                                          fixupp))     
 
+    MPI.finalize()
 end
