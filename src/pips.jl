@@ -288,62 +288,62 @@ function pips_solve(master::JuMP.Model)
 
     comm_val = Cint[comm.fval]
 
-    val = ccall((libpips,"PIPSSolve"), Void, (Ptr{Void},  # MPI_COMM
-                                             Cint,       # numScens
-                                             Cint,       # nx0
-                                             Cint,       # my0
-                                             Cint,       # mz0
-                                             Cint,       # nx
-                                             Cint,       # my
-                                             Cint,       # mz
-                                             Any,  # Q
-                                             Any,  # nnzQ
-                                             Any,  # c
-                                             Any,  # A
-                                             Any,  # nnzA
-                                             Any,  # B
-                                             Any,  # nnzB
-                                             Any,  # b
-                                             Any,  # C
-                                             Any,  # nnzC
-                                             Any,  # D
-                                             Any,  # nnzD
-                                             Any,  # clow
-                                             Any,  # iclow
-                                             Any,  # cupp
-                                             Any,  # icupp
-                                             Any,  # xlow
-                                             Any,  # ixlow
-                                             Any,  # xupp
-                                             Any), # ixupp
-                                            (comm_val,       
-                                             cint(numScens),   
-                                             cint(master.numCols),
-                                             cint(n_eq_m),        
-                                             cint(n_ineq_m),      
-                                             cint(child.numCols), 
-                                             cint(m_eq_c),        
-                                             cint(m_ineq_c),      
-                                             fQ,         
-                                             fnnzQ,      
-                                             fc,         
-                                             fA,         
-                                             fnnzA,      
-                                             fB,         
-                                             fnnZB,      
-                                             fb,         
-                                             fC,         
-                                             fnnzC,      
-                                             fD,         
-                                             fnnzD,      
-                                             fclow,      
-                                             ficlow,     
-                                             fcupp,      
-                                             ficupp,     
-                                             fxlow,      
-                                             fixlow,     
-                                             fxupp,      
-                                             fixupp))     
-
+    val = ccall((libpips,"PIPSSolve"), Void, (Ptr{Cint},  # MPI_COMM
+                                              Cint,       # numScens
+                                              Cint,       # nx0
+                                              Cint,       # my0
+                                              Cint,       # mz0
+                                              Cint,       # nx
+                                              Cint,       # my
+                                              Cint,       # mz
+                                              Any,  # Q
+                                              Any,  # nnzQ
+                                              Any,  # c
+                                              Any,  # A
+                                              Any,  # nnzA
+                                              Any,  # B
+                                              Any,  # nnzB
+                                              Any,  # b
+                                              Any,  # C
+                                              Any,  # nnzC
+                                              Any,  # D
+                                              Any,  # nnzD
+                                              Any,  # clow
+                                              Any,  # iclow
+                                              Any,  # cupp
+                                              Any,  # icupp
+                                              Any,  # xlow
+                                              Any,  # ixlow
+                                              Any,  # xupp
+                                              Any), # ixupp
+                                              comm_val,       
+                                              cint(numScens),   
+                                              cint(master.numCols),
+                                              cint(n_eq_m),        
+                                              cint(n_ineq_m),      
+                                              cint(child.numCols), 
+                                              cint(m_eq_c),        
+                                              cint(m_ineq_c),      
+                                              fQ,         
+                                              fnnzQ,      
+                                              fc,         
+                                              fA,         
+                                              fnnzA,      
+                                              fB,         
+                                              fnnZB,      
+                                              fb,         
+                                              fC,         
+                                              fnnzC,      
+                                              fD,         
+                                              fnnzD,      
+                                              fclow,      
+                                              ficlow,     
+                                              fcupp,      
+                                              ficupp,     
+                                              fxlow,      
+                                              fixlow,     
+                                              fxupp,      
+                                              fixupp)     
+ 
     MPI.finalize()
 end
