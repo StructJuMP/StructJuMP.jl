@@ -44,8 +44,9 @@ end
 
 StochasticData() = StochasticData(nothing,Model[],nothing,0)
 
-function StochasticModel(;solver=nothing)
-    m = Model(solver=solver)
+function StochasticModel()
+    MPI.init()
+    m = Model()
     m.ext[:Stochastic] = StochasticData()
     return m
 end

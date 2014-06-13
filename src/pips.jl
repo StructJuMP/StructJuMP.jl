@@ -1,5 +1,8 @@
 libpips = dlopen("/home/huchette/PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
 
+cint(a::Int) = convert(Cint,a)
+vcint(a::Vector{Int}) = convert(Vector{Cint},a)
+
 function get_sparse_data(owner::Model, interest::Model, idx_set::Vector{Int})
     numRows = length(idx_set)
     rowptr   = Array(Int, numRows+1)
@@ -38,14 +41,30 @@ function get_sparse_data(owner::Model, interest::Model, idx_set::Vector{Int})
     return rowptr, colval, rownzval
 end
 
+function get_sparse_Q(m::Model)
+    n = m.numCols
+    qobj = m.obj
+    vars1 = Int[x.col for x in m.obj.qvars1]
+    vars2 = Int[x.col for x in m.obj.qvars2]
+    coeff = m.obj.coeffs
+    Q = sparse(vars1, vars2, coeff)
+    @assert istriu(Q)
+    return Q.rowptr, Q.colval, Q.nzval
+end
+
 function pips_solve(m::Model)
     @assert parent(m) == nothing # make sure this is master problem
 
-    # initialize MPI
-    MPI.init()
+    # MPI data
     comm = MPI.COMM_WORLD
+    root = 0
+    size = MPI.size(comm)
+    rank = MPI.rank(comm)
 
     numScens = num_scenarios(m)
+    scenPerRank = iceil(numScens/size)
+
+    rank_to_model(id::Cint) = children(m)[rem1(id, scenPerRank)]
 
     f, rowlb, rowub = JuMP.prepProblemBounds(m)
 
@@ -56,34 +75,40 @@ function pips_solve(m::Model)
     #####################################################
     # Callback functions for matrices, vectors, and nnz's
     #####################################################
+
+    # TODO: cache sparsity information somewhere so we don't have to compute twice
     function fQ(user_data, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
-        unsafe_copy!(krowM, Q_rowptr[id], N)
+        tar = rank_to_model(m,id)
+        rowptr, colvals, rownzvals = get_sparse_Q(tar)
+        unsafe_copy!(krowM, vcint(rowptr), tar.numCols+1)
+        unsafe_copy!(jcolM, vcint(colvals), length(colvals))
+        unsafe_copy!(M, rownzvals, length(rownzvals))
+        return nothing
     end
 
-    for (name, typ) in [(:fA, "eq"),
-                        (:fB, "eq"), 
-                        (:fC, "ineq"), 
-                        (:fD, "ineq")]
+    function fnnzQ(user_data, id::Cint, nnz::Ptr{Cint})
+        tar = rank_to_model(m,id)
+        rowptr, colvals, rownzvals = get_sparse_Q(tar)
+        unsafe_store!(nnz, cint(length(colvals)), 1)
+        return nothing
+    end
+
+    for (name1, name2, typ) in [(:fA, :fnnzA, "eq"),
+                                (:fB, :fnnzB, "eq"), 
+                                (:fC, :fnnzC, "ineq"), 
+                                (:fD, :fnnzD, "ineq")]
         @eval begin
-            function $(name)(user_data, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
-                row_ptr, colvals, rownzvals = getSparseData()
-                unsafe_copy!(krowM, symbol(typ*"_rowptr[id]"),    n_eq+1)
-                unsafe_copy!(jcolM, symbol(typ*"_colvals[id]"),   symbol("length("*typ*"_colvals[id])"))
-                unsafe_copy!(M,     symbol(typ*"_rownzvals[id]"), symbol("length("*typ*"_colvals[id])"))
-                return C_NULL
+            function $(name1)(user_data, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
+                rowptr, colvals, rownzvals = get_sparse_data(m, rank_to_model(m,id), symbol(typ*"_idx"))
+                unsafe_copy!(krowM, vcint(symbol(typ*"_rowptr[id]")),    n_eq+1)
+                unsafe_copy!(jcolM, vcint(symbol(typ*"_colvals[id]")),   symbol("length("*typ*"_colvals[id])"))
+                unsafe_copy!(M,     vcint(symbol(typ*"_rownzvals[id]")), symbol("length("*typ*"_colvals[id])"))
+                return nothing
             end
-        end
-    end
-
-    for (name, lngth) in [(:fnnzQ, :(length(m.obj.qvars1))), 
-                          (:fnnzA, :(length(eq_colvals[id]))),
-                          (:fnnzB, :(length(eq_colvals[id]))), 
-                          (:fnnzC, :(length(eq_colvals[id]))),
-                          (:fnnzD, :(length(eq_colvals[id])))]
-        @eval begin
-            function $(name)(user_data, id::Cint, nnz::Ptr{Cint})
-                unsafe_store!(nnz, $(lngth), 1)
-                return C_NULL
+            function $(name2)(user_data, id::Cint, nnz::Ptr{Cint})
+                row_ptr, colvals, rownzvals = get_sparse_data(m, rank_to_model(m,id), symbol(typ*"_idx"))
+                unsafe_store!(nnz, cint($(lngth)), 1)
+                return nothing
             end
         end
     end
@@ -93,38 +118,32 @@ function pips_solve(m::Model)
         @eval begin
             function $(name)(user_data, id::Cint, vec::Ptr{Cdouble}, len::Cint)
                 @assert len == $(lngth)
-                unsafe_copy!(vec, $(stor), len)
-                return C_NULL
+                unsafe_copy!(vec, vcint($(stor)), len)
+                return nothing
             end
         end
     end
 
-    for (name, lngth, stor) in [(:fclow, :n_ineq, :rlb),
-                                (:fcupp, :n_ineq, :rub),
-                                (:fxlow, :(m.numCols), :(m.colLower)),
-                                (:fxupp, :(m.numCols), :(m.colUpper))]
+    for (name1, name2, lngth, stor) in [(:fclow, :ficlow, :n_ineq, :rlb),
+                                        (:fcupp, :ficupp, :n_ineq, :rub),
+                                        (:fxlow, :fixlow, :(m.numCols), :(m.colLower)),
+                                        (:fxupp, :fixupp, :(m.numCols), :(m.colUpper))]
         @eval begin
-            function $(name)(user_data, id::Cint, vec::Ptr{Cdouble}, len::Cint)
+            function $(name1)(user_data, id::Cint, vec::Ptr{Cdouble}, len::Cint)
                 @assert len == $(lngth)
                 for it in 1:len
                     val = (isinf($stor)[it]) ? 0.0 : $(stor)[it]
                     unsafe_store!(vec, convert(Cdouble,val), it)
                 end
+                return nothing
             end
-        end
-    end
-
-    for (name, lngth, stor) in [(:ficlow, :n_ineq, :rlb),
-                                (:ficupp, :n_ineq, :rub),
-                                (:fixlow, :(m.numCols), :(m.colLower)),
-                                (:fixupp, :(m.numCols), :(m.colUpper))]
-        @eval begin
-            function $(name)(user_data, id::Cint, vec::Ptr{Cdouble}, len::Cint)
+            function $(name2)(user_data, id::Cint, vec::Ptr{Cdouble}, len::Cint)
                 @assert len == $(lngth)
                 for it in 1:len
                     val = (isinf($(stor)[it]) ? 0.0 : 1.0)
                     unsafe_store!(vec, convert(Cdouble,val), it)
                 end
+                return nothing
             end
         end
     end
@@ -157,8 +176,8 @@ function pips_solve(m::Model)
                                        Ptr{Void},  # ixlow
                                        Ptr{Void},  # xupp
                                        Ptr{Void}), # ixupp
-                                      (comm,       
-                                       numScens,   
+                                      (&comm.fval,       
+                                       cint(numScens),   
                                        nx0,        
                                        my0,        
                                        mz0,        
