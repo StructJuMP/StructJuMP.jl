@@ -108,7 +108,7 @@ function pips_solve(master::JuMP.Model)
     #####################################################
 
     # TODO: cache sparsity information somewhere so we don't have to compute twice
-    function fQ(user_data, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
+    function Q(user_data, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
         host = (id == root ? master : child)
         rowptr, colvals, rownzvals = get_sparse_Q(host)
         unsafe_copy!(krowM, vcint(rowptr.-1), host.numCols+1)
@@ -117,14 +117,14 @@ function pips_solve(master::JuMP.Model)
         return nothing
     end
 
-    function fnnzQ(user_data, id::Cint, nnz::Ptr{Cint})
+    function nnzQ(user_data, id::Cint, nnz::Ptr{Cint})
         host = (id == root ? master : child)
         _, colvals, _ = get_sparse_Q(tar)
         unsafe_store!(nnz, cint(length(colvals)), 1)
         return nothing
     end
 
-    function fA(user_data, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
+    function A(user_data, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
         if id == root
             host = master
             rng = eq_idx_m
@@ -139,7 +139,7 @@ function pips_solve(master::JuMP.Model)
         return nothing
     end
 
-    function fB(user_data, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
+    function B(user_data, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
         id == root && return nothing
         rowptr, colvals, rownzvals = get_sparse_data(child, child, eq_idx_c)
         unsafe_copy!(krowM, vcint(rowptr.-1),    n_eq+1)
@@ -148,7 +148,7 @@ function pips_solve(master::JuMP.Model)
         return nothing
     end
 
-    function fC(user_data, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
+    function C(user_data, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
         if id == root
             host = master
             rng = ineq_idx_m
@@ -163,7 +163,7 @@ function pips_solve(master::JuMP.Model)
         return nothing
     end
 
-    function fD(user_data, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
+    function D(user_data, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
         id == root && return nothing
         rowptr, colvals, rownzvals = get_sparse_data(child, child, ineq_idx_m)
         unsafe_copy!(krowM, vcint(rowptr.-1),    n_eq+1)
@@ -172,7 +172,7 @@ function pips_solve(master::JuMP.Model)
         return nothing
     end
 
-    function fnnzA(user_data, id::Cint, nnz::Ptr{Cint})
+    function nnzA(user_data, id::Cint, nnz::Ptr{Cint})
         if id == root
             host = master
             rng = eq_idx_m
@@ -185,7 +185,7 @@ function pips_solve(master::JuMP.Model)
         return nothing
     end
 
-    function fnnzB(user_data, id::Cint, nnz::Ptr{Cint})
+    function nnzB(user_data, id::Cint, nnz::Ptr{Cint})
         if id == root
             unsafe_store!(nnz, cint(0), 1)
         else
@@ -195,7 +195,7 @@ function pips_solve(master::JuMP.Model)
         return nothing
     end
 
-    function fnnzC(user_data, id::Cint, nnz::Ptr{Cint})
+    function nnzC(user_data, id::Cint, nnz::Ptr{Cint})
         if id == root
             host = master
             rng = eq_idx_m
@@ -208,7 +208,7 @@ function pips_solve(master::JuMP.Model)
         return nothing
     end
 
-    function fnnzD(user_data, id::Cint, nnz::Ptr{Cint})
+    function nnzD(user_data, id::Cint, nnz::Ptr{Cint})
         if id == root
             unsafe_store!(nnz, cint(0), 1)
         else
@@ -218,7 +218,7 @@ function pips_solve(master::JuMP.Model)
         return nothing
     end
 
-    function fb(user_data, id::Cint, vec::Ptr{Cdouble}, len::Cint)
+    function b(user_data, id::Cint, vec::Ptr{Cdouble}, len::Cint)
         if id == root
             @assert len == n_eq_m
             unsafe_copy!(vec, vcint(eq_rhs_m), len)
@@ -228,7 +228,7 @@ function pips_solve(master::JuMP.Model)
         end
     end
 
-    function fc(user_data, id::Cint, vec::Ptr{Cdouble}, len::Cint)
+    function c(user_data, id::Cint, vec::Ptr{Cdouble}, len::Cint)
         if id == root
             @assert len == n_eq_m
             unsafe_copy!(vec, vcint(f_m), len)
@@ -238,10 +238,10 @@ function pips_solve(master::JuMP.Model)
         end
     end
 
-    for (name,src1,src2) in [(:fclow, :rlb_m, :rlb_c),
-                             (:fcupp, :rub_m, :rub_c),
-                             (:fxlow, :(master.colLower), :(child.colUpper)),
-                             (:fxupp, :(master.colUpper), :(child.colUpper))]
+    for (name,src1,src2) in [(:clow, :rlb_m, :rlb_c),
+                             (:cupp, :rub_m, :rub_c),
+                             (:xlow, :(master.colLower), :(child.colUpper)),
+                             (:xupp, :(master.colUpper), :(child.colUpper))]
         @eval begin
             function $(name)(user_data, id::Cint, vec::Ptr{Cdouble}, len::Cint)
                 src = (id == root ? $src1 : $src2)
@@ -255,10 +255,10 @@ function pips_solve(master::JuMP.Model)
         end
     end
 
-    for (name,src1,src2) in [(:ficlow, :rlb_m, :rlb_c),
-                             (:ficupp, :rub_m, :rub_c),
-                             (:fixlow, :(master.colLower), :(child.colUpper)),
-                             (:fixupp, :(master.colUpper), :(child.colUpper))]
+    for (name,src1,src2) in [(:iclow, :rlb_m, :rlb_c),
+                             (:icupp, :rub_m, :rub_c),
+                             (:ixlow, :(master.colLower), :(child.colUpper)),
+                             (:ixupp, :(master.colUpper), :(child.colUpper))]
         @eval begin
             function $(name)(user_data, id::Cint, vec::Ptr{Cdouble}, len::Cint)
                 src = (id == root ? $src1 : $src2)
@@ -270,6 +270,20 @@ function pips_solve(master::JuMP.Model)
                 return nothing
             end
         end
+    end
+
+    for name in [:Q, :A, :B, :C, :D]
+        @eval begin 
+            symbol("f"*name) = 
+                cfunction($name, Void, (Ptr{Void},Cint,Ptr{Cint},Ptr{Cint},Ptr{Cdouble}))
+            symbol("fnnz"*name) = 
+                cfunction($name, Void, (Ptr{Void},Cint,Cint,Ptr{Cint}))
+        end
+    end
+
+    for name in [:b, :c, :clow, :cupp, :xlow, :xupp, :iclow, :icupp, :ixlow, :ixupp]
+        @eval symbol("f"*name) = 
+            cfunction($name, Void, (Ptr{Void},Cint,Ptr{Cdouble},Cint))
     end
 
     val = ccall((libpips,"PIPSSolve"), Void, (Ptr{Void},  # MPI_COMM
