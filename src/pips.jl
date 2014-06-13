@@ -286,6 +286,8 @@ function pips_solve(master::JuMP.Model)
             cfunction($name, Void, (Ptr{Void},Cint,Ptr{Cdouble},Cint))
     end
 
+    comm_val = Cint[comm.fval]
+
     val = ccall((libpips,"PIPSSolve"), Void, (Ptr{Void},  # MPI_COMM
                                              Cint,       # numScens
                                              Cint,       # nx0
@@ -314,7 +316,7 @@ function pips_solve(master::JuMP.Model)
                                              Any,  # ixlow
                                              Any,  # xupp
                                              Any), # ixupp
-                                            (&(comm.fval),       
+                                            (comm_val,       
                                              cint(numScens),   
                                              cint(master.numCols),
                                              cint(n_eq_m),        
