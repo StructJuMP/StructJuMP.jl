@@ -1,4 +1,4 @@
-# libpips = dlopen("/home/huchette/PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
+libpips = dlopen("/home/huchette/PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
 
 cint(a::Int) = convert(Cint,a)
 vcint(a::Vector{Int}) = convert(Vector{Cint},a)
@@ -88,8 +88,8 @@ function pips_solve(master::JuMP.Model)
 
     # rank_to_model(id::Cint) = getchildren(m)[rem1(id, scenPerRank)]
 
-    f_m, rowlb_m, rowub_m = JuMP.prepProblemBounds(master)
-    f_c, rowlb_c, rowub_c = JuMP.prepProblemBounds(child)
+    f_m, rlb_m, rub_m = JuMP.prepProblemBounds(master)
+    f_c, rlb_c, rub_c = JuMP.prepProblemBounds(child)
 
     eq_idx_m, ineq_idx_m = getConstraintTypes(master)
     eq_idx_c, ineq_idx_c = getConstraintTypes(child)
@@ -97,11 +97,11 @@ function pips_solve(master::JuMP.Model)
     n_eq_m, n_ineq_m = length(eq_idx_m), length(ineq_idx_m)
     n_eq_c, n_ineq_c = length(eq_idx_c), length(ineq_idx_c)
 
-    eq_lb_m, eq_ub_m = rowlb_m[eq_idx_m], rowub_m[eq_idx_m]
-    eq_lb_c, eq_ub_c = rowlb_m[eq_idx_c], rowub_c[eq_idx_c]
+    eq_rhs_m = rlb_m[eq_idx_m]
+    eq_rhs_c = rlb_c[eq_idx_c]
 
-    ineq_lb_m, ineq_ub_m = rowlb_m[ineq_idx_m], rowub_m[ineq_idx_m]
-    ineq_lb_c, ineq_ub_c = rowlb_c[ineq_idx_c], rowub_c[ineq_idx_c]
+    ineq_lb_m, ineq_ub_m = rlb_m[ineq_idx_m], rub_m[ineq_idx_m]
+    ineq_lb_c, ineq_ub_c = rlb_c[ineq_idx_c], rub_c[ineq_idx_c]
 
     #####################################################
     # Callback functions for matrices, vectors, and nnz's
@@ -125,8 +125,14 @@ function pips_solve(master::JuMP.Model)
     end
 
     function fA(user_data, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
-        host = (id == root ? master : child)
-        rowptr, colvals, rownzvals = get_sparse_data(host, master, eq_idx_m)
+        if id == root
+            host = master
+            rng = eq_idx_m
+        else
+            host = child
+            rng = eq_idx_c
+        end
+        rowptr, colvals, rownzvals = get_sparse_data(host, master, rng)
         unsafe_copy!(krowM, vcint(rowptr.-1),    n_eq+1)
         unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
         unsafe_copy!(M,     vcint(rownzvals), length(colvals))
@@ -143,8 +149,14 @@ function pips_solve(master::JuMP.Model)
     end
 
     function fC(user_data, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
-        host = (id == root ? master : child)
-        rowptr, colvals, rownzvals = get_sparse_data(host, master, ineq_idx_m)
+        if id == root
+            host = master
+            rng = ineq_idx_m
+        else
+            host = child
+            rng = ineq_idx_c
+        end
+        rowptr, colvals, rownzvals = get_sparse_data(host, master, rng)
         unsafe_copy!(krowM, vcint(rowptr.-1),    n_eq+1)
         unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
         unsafe_copy!(M,     vcint(rownzvals), length(colvals))
@@ -161,8 +173,14 @@ function pips_solve(master::JuMP.Model)
     end
 
     function fnnzA(user_data, id::Cint, nnz::Ptr{Cint})
-        host = (id == root ? master : child)
-        _, colvals, _ = get_sparse_data(host, master, eq_idx_m)
+        if id == root
+            host = master
+            rng = eq_idx_m
+        else
+            host = child
+            rng = eq_idx_c
+        end
+        _, colvals, _ = get_sparse_data(host, master, rng)
         unsafe_store!(nnz, cint(length(colvals)), 1)
         return nothing
     end
@@ -178,8 +196,14 @@ function pips_solve(master::JuMP.Model)
     end
 
     function fnnzC(user_data, id::Cint, nnz::Ptr{Cint})
-        host = (id == root ? master : child)
-        _, colvals, _ = get_sparse_data(host, master, ineq_idx_m)
+        if id == root
+            host = master
+            rng = eq_idx_m
+        else
+            host = child
+            rng = eq_idx_c
+        end
+        _, colvals, _ = get_sparse_data(host, master, rng)
         unsafe_store!(nnz, cint(length(colvals)), 1)
         return nothing
     end
@@ -192,38 +216,6 @@ function pips_solve(master::JuMP.Model)
             unsafe_store!(nnz, cint(length(colvals)), 1)
         end
         return nothing
-    end
-
-    if rank == 3
-        println("A:")
-        rowptr, colvals, rownzvals = get_sparse_data(m, m, eq_idx)
-        println("rowptr = $rowptr")
-        println("colvals = $colvals")
-        println("rownzvals = $rownzvals")
-    end
-
-    if rank == 3
-        println("B:")
-        rowptr, colvals, rownzvals = get_sparse_data(m, m, ineq_idx_m)
-        println("rowptr = $rowptr")
-        println("colvals = $colvals")
-        println("rownzvals = $rownzvals")
-    end
-
-    if rank == 3
-        println("C:")
-        rowptr, colvals, rownzvals = get_sparse_data(getchildren(m)[1], m, eq_idx)
-        println("rowptr = $rowptr")
-        println("colvals = $colvals")
-        println("rownzvals = $rownzvals")
-    end
-
-    if rank == 3
-        println("D:")
-        rowptr, colvals, rownzvals = get_sparse_data(getchildren(m)[1], m, ineq_idx_m)
-        println("rowptr = $rowptr")
-        println("colvals = $colvals")
-        println("rownzvals = $rownzvals")
     end
 
     function fb(user_data, id::Cint, vec::Ptr{Cdouble}, len::Cint)
@@ -280,62 +272,62 @@ function pips_solve(master::JuMP.Model)
         end
     end
 
-    # val = ccall((:PIPSSolve,libpips), Void, (Ptr{Cint},  # MPI_COMM
-    #                                          Cint,       # numScens
-    #                                          Cint,       # nx0
-    #                                          Cint,       # my0
-    #                                          Cint,       # mz0
-    #                                          Cint,       # nx
-    #                                          Cint,       # my
-    #                                          Cint,       # mz
-    #                                          Ptr{Void},  # Q
-    #                                          Ptr{Void},  # nnzQ
-    #                                          Ptr{Void},  # c
-    #                                          Ptr{Void},  # A
-    #                                          Ptr{Void},  # nnzA
-    #                                          Ptr{Void},  # B
-    #                                          Ptr{Void},  # nnzB
-    #                                          Ptr{Void},  # b
-    #                                          Ptr{Void},  # C
-    #                                          Ptr{Void},  # nnzC
-    #                                          Ptr{Void},  # D
-    #                                          Ptr{Void},  # nnzD
-    #                                          Ptr{Void},  # clow
-    #                                          Ptr{Void},  # iclow
-    #                                          Ptr{Void},  # cupp
-    #                                          Ptr{Void},  # icupp
-    #                                          Ptr{Void},  # xlow
-    #                                          Ptr{Void},  # ixlow
-    #                                          Ptr{Void},  # xupp
-    #                                          Ptr{Void}), # ixupp
-    #                                         (&(comm.fval),       
-    #                                          cint(numScens),   
-    #                                          nx0,        
-    #                                          my0,        
-    #                                          mz0,        
-    #                                          nx,         
-    #                                          my,         
-    #                                          mz,         
-    #                                          fQ,         
-    #                                          fnnzQ,      
-    #                                          fc,         
-    #                                          fA,         
-    #                                          fnnzA,      
-    #                                          fB,         
-    #                                          fnnZB,      
-    #                                          fb,         
-    #                                          fC,         
-    #                                          fnnzC,      
-    #                                          fD,         
-    #                                          fnnzD,      
-    #                                          fclow,      
-    #                                          ficlow,     
-    #                                          fcupp,      
-    #                                          ficupp,     
-    #                                          fxlow,      
-    #                                          fixlow,     
-    #                                          fxupp,      
-    #                                          fixupp))     
+    val = ccall((libpips,"PIPSSolve"), Void, (Ptr{Void},  # MPI_COMM
+                                             Cint,       # numScens
+                                             Cint,       # nx0
+                                             Cint,       # my0
+                                             Cint,       # mz0
+                                             Cint,       # nx
+                                             Cint,       # my
+                                             Cint,       # mz
+                                             Ptr{Void},  # Q
+                                             Ptr{Void},  # nnzQ
+                                             Ptr{Void},  # c
+                                             Ptr{Void},  # A
+                                             Ptr{Void},  # nnzA
+                                             Ptr{Void},  # B
+                                             Ptr{Void},  # nnzB
+                                             Ptr{Void},  # b
+                                             Ptr{Void},  # C
+                                             Ptr{Void},  # nnzC
+                                             Ptr{Void},  # D
+                                             Ptr{Void},  # nnzD
+                                             Ptr{Void},  # clow
+                                             Ptr{Void},  # iclow
+                                             Ptr{Void},  # cupp
+                                             Ptr{Void},  # icupp
+                                             Ptr{Void},  # xlow
+                                             Ptr{Void},  # ixlow
+                                             Ptr{Void},  # xupp
+                                             Ptr{Void}), # ixupp
+                                            (&(comm.fval),       
+                                             cint(numScens),   
+                                             cint(master.numCols),
+                                             cint(n_eq_m),        
+                                             cint(n_ineq_m),      
+                                             cint(child.numCols), 
+                                             cint(m_eq_c),        
+                                             cint(m_ineq_c),      
+                                             fQ,         
+                                             fnnzQ,      
+                                             fc,         
+                                             fA,         
+                                             fnnzA,      
+                                             fB,         
+                                             fnnZB,      
+                                             fb,         
+                                             fC,         
+                                             fnnzC,      
+                                             fD,         
+                                             fnnzD,      
+                                             fclow,      
+                                             ficlow,     
+                                             fcupp,      
+                                             ficupp,     
+                                             fxlow,      
+                                             fixlow,     
+                                             fxupp,      
+                                             fixupp))     
 
     MPI.finalize()
 end
