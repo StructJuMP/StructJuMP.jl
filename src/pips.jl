@@ -294,26 +294,26 @@ function pips_solve(master::JuMP.Model)
                                              Cint,       # nx
                                              Cint,       # my
                                              Cint,       # mz
-                                             Ptr{Void},  # Q
-                                             Ptr{Void},  # nnzQ
-                                             Ptr{Void},  # c
-                                             Ptr{Void},  # A
-                                             Ptr{Void},  # nnzA
-                                             Ptr{Void},  # B
-                                             Ptr{Void},  # nnzB
-                                             Ptr{Void},  # b
-                                             Ptr{Void},  # C
-                                             Ptr{Void},  # nnzC
-                                             Ptr{Void},  # D
-                                             Ptr{Void},  # nnzD
-                                             Ptr{Void},  # clow
-                                             Ptr{Void},  # iclow
-                                             Ptr{Void},  # cupp
-                                             Ptr{Void},  # icupp
-                                             Ptr{Void},  # xlow
-                                             Ptr{Void},  # ixlow
-                                             Ptr{Void},  # xupp
-                                             Ptr{Void}), # ixupp
+                                             Any,  # Q
+                                             Any,  # nnzQ
+                                             Any,  # c
+                                             Any,  # A
+                                             Any,  # nnzA
+                                             Any,  # B
+                                             Any,  # nnzB
+                                             Any,  # b
+                                             Any,  # C
+                                             Any,  # nnzC
+                                             Any,  # D
+                                             Any,  # nnzD
+                                             Any,  # clow
+                                             Any,  # iclow
+                                             Any,  # cupp
+                                             Any,  # icupp
+                                             Any,  # xlow
+                                             Any,  # ixlow
+                                             Any,  # xupp
+                                             Any), # ixupp
                                             (&(comm.fval),       
                                              cint(numScens),   
                                              cint(master.numCols),
