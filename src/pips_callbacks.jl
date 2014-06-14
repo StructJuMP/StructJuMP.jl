@@ -1,12 +1,12 @@
 # TODO: cache sparsity information somewhere so we don't have to compute twice
 
-foo(Ptr{Void},Cint,Ptr{Cint},Ptr{Cint},Ptr{Cdouble}) = println("in mat callback")
+foo(::Ptr{Void},::Cint,::Ptr{Cint},::Ptr{Cint},::Ptr{Cdouble}) = println("in mat callback")
 Q = A = B = C = D = foo
 
-bar(Ptr{Void},Cint,Ptr{Cint}) = println("in nnz callback")
+bar(::Ptr{Void},::Cint,::Ptr{Cint}) = println("in nnz callback")
 nnzQ = nnzA = nnzB = nnzC = nnzD = bar
 
-baz(Ptr{Void},Cint,Ptr{Cdouble},Cint) = println("in vec callback")
+baz(::Ptr{Void},::Cint,::Ptr{Cdouble},::Cint) = println("in vec callback")
 fb = fc = fclow = fcupp = fxlow = fxupp = ficlow = ficupp = fixlow = fixupp = baz
 
 # function Q(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
