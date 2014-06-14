@@ -270,17 +270,22 @@ for (name,src1,src2) in [(:iclow, :(get_ineq_idx(model)), :rlb_c),
     end
 end
 
-for (mat_name,nnz_name,old_name) in [(:fQ,:fnnzQ,:Q),
-                                     (:fA,:fnnzA,:A),
-                                     (:fB,:fnnzB,:B),
-                                     (:fC,:fnnzC,:C),
-                                     (:fD,:fnnzD,:D)]
-    @eval begin
-        $mat_name =
+for (mat_name,old_name) in [(:fQ,:Q),
+                                     (:fA,:A),
+                                     (:fB,:B),
+                                     (:fC,:C),
+                                     (:fD,:D)]
+    @eval $mat_name =
             cfunction($old_name, Void, (Ptr{Void},Cint,Ptr{Cint},Ptr{Cint},Ptr{Cdouble}))
-        $nnz_name =
+end
+
+for (nnz_name,old_name) in [(:fnnzQ,:Q),
+                                     (:fnnzA,:A),
+                                     (:fnnzB,:B),
+                                     (:fnnzC,:C),
+                                     (:fnnzD,:D)]
+    @eval $nnz_name =
             cfunction($old_name, Void, (Ptr{Void},Cint,Ptr{Cint}))
-    end
 end
 
 for (vec_name,old_name) in [(:fb,:b), (:fc,:c),
