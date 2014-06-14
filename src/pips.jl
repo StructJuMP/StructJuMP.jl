@@ -1,4 +1,5 @@
-# libpips = dlopen("/home/huchette/PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
+libpips = dlopen("/home/huchette/PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
+PIPSSolve = dlsym(libpips,:PIPSSolve)
 
 type UserData
     parent :: JuMP.Model
@@ -59,7 +60,7 @@ function get_sparse_data(owner::JuMP.Model, interest::JuMP.Model, idx_set::Vecto
         JuMP.empty!(tmprow)
     end
     rowptr[numRows+1] = nnz + 1
-    
+
     return rowptr, colval, rownzval
 end
 
@@ -101,7 +102,8 @@ function pips_solve(master::JuMP.Model)
     n_eq_m, n_ineq_m = length(eq_idx_m), length(ineq_idx_m)
     n_eq_c, n_ineq_c = length(eq_idx_c), length(ineq_idx_c)
 
-    val = ccall((libpips,"PIPSSolve"), Ptr{Void}, (Ptr{Cint},  # MPI_COMM
+    val = ccall(PIPSSolve, Void, (Ptr{Cint},  # MPI_COMM
+    #val = ccall(("PIPSSolve",libpips), Void, (Ptr{Cint},  # MPI_COMM
                                                    Ptr{Void},
                                                    Cint,       # numScens
                                                    Cint,       # nx0
@@ -130,35 +132,35 @@ function pips_solve(master::JuMP.Model)
                                                    Any,  # ixlow
                                                    Any,  # xupp
                                                    Any), # ixupp
-                                                   &comm.fval,       
+                                                   &comm.fval,
                                                    pointer_from_objref(user_data),
-                                                   cint(numScens),   
+                                                   cint(numScens),
                                                    cint(master.numCols),
-                                                   cint(n_eq_m),        
-                                                   cint(n_ineq_m),      
-                                                   cint(child.numCols), 
-                                                   cint(n_eq_c),        
-                                                   cint(n_ineq_c),      
-                                                   fQ,         
-                                                   fnnzQ,      
-                                                   fc,         
-                                                   fA,         
-                                                   fnnzA,      
-                                                   fB,         
-                                                   fnnZB,      
-                                                   fb,         
-                                                   fC,         
-                                                   fnnzC,      
-                                                   fD,         
-                                                   fnnzD,      
-                                                   fclow,      
-                                                   ficlow,     
-                                                   fcupp,      
-                                                   ficupp,     
-                                                   fxlow,      
-                                                   fixlow,     
-                                                   fxupp,      
-                                                   fixupp)     
- 
+                                                   cint(n_eq_m),
+                                                   cint(n_ineq_m),
+                                                   cint(child.numCols),
+                                                   cint(n_eq_c),
+                                                   cint(n_ineq_c),
+                                                   fQ,
+                                                   fnnzQ,
+                                                   fc,
+                                                   fA,
+                                                   fnnzA,
+                                                   fB,
+                                                   fnnZB,
+                                                   fb,
+                                                   fC,
+                                                   fnnzC,
+                                                   fD,
+                                                   fnnzD,
+                                                   fclow,
+                                                   ficlow,
+                                                   fcupp,
+                                                   ficupp,
+                                                   fxlow,
+                                                   fixlow,
+                                                   fxupp,
+                                                   fixupp)
+
     MPI.finalize()
 end
