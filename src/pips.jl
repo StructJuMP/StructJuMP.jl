@@ -147,7 +147,7 @@ function pips_solve(master::JuMP.Model)
                                                    fA,
                                                    fnnzA,
                                                    fB,
-                                                   fnnZB,
+                                                   fnnzB,
                                                    fb,
                                                    fC,
                                                    fnnzC,

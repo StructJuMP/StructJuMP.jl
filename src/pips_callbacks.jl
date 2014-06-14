@@ -236,54 +236,12 @@ function ixupp(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     return nothing
 end
 
-for (name,src1,src2) in [(:clow, :rlb_m, :rlb_c),
-                         (:cupp, :rub_m, :rub_c),
-                         (:xlow, :(master.colLower), :(child.colUpper)),
-                         (:xupp, :(master.colUpper), :(child.colUpper))]
-    @eval begin
-        function $(name)(user_data, id::Cint, vec::Ptr{Cdouble}, len::Cint)
-            src = (id == root ? $src1 : $src2)
-            @assert len == length(src)
-            for it in 1:len
-                val = (isinf(src)[it]) ? 0.0 : src[it]
-                unsafe_store!(vec, convert(Cdouble,val), it)
-            end
-            return nothing
-        end
-    end
-end
-
-for (name,src1,src2) in [(:iclow, :(get_ineq_idx(model)), :rlb_c),
-                         (:icupp, :rub_m, :rub_c),
-                         (:ixlow, :(master.colLower), :(child.colUpper)),
-                         (:ixupp, :(master.colUpper), :(child.colUpper))]
-    @eval begin
-        function $(name)(user_data, id::Cint, vec::Ptr{Cdouble}, len::Cint)
-            src = (id == root ? $src1 : $src2)
-            @assert len == length(src)
-            for it in 1:len
-                val = (isinf(src)[it]) ? 0.0 : 1.0
-                unsafe_store!(vec, convert(Cdouble,val), it)
-            end
-            return nothing
-        end
-    end
-end
-
-for (mat_name,old_name) in [(:fQ,:Q),
-                                     (:fA,:A),
-                                     (:fB,:B),
-                                     (:fC,:C),
-                                     (:fD,:D)]
+for (mat_name,old_name) in [(:fQ,:Q), (:fA,:A), (:fB,:B), (:fC,:C), (:fD,:D)]
     @eval $mat_name =
             cfunction($old_name, Void, (Ptr{Void},Cint,Ptr{Cint},Ptr{Cint},Ptr{Cdouble}))
 end
 
-for (nnz_name,old_name) in [(:fnnzQ,:Q),
-                                     (:fnnzA,:A),
-                                     (:fnnzB,:B),
-                                     (:fnnzC,:C),
-                                     (:fnnzD,:D)]
+for (nnz_name,old_name) in [(:fnnzQ,:nnzQ), (:fnnzA,:nnzA), (:fnnzB,:nnzB), (:fnnzC,:nnzC), (:fnnzD,:nnzD)]
     @eval $nnz_name =
             cfunction($old_name, Void, (Ptr{Void},Cint,Ptr{Cint}))
 end
