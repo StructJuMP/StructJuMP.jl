@@ -1,13 +1,22 @@
 # TODO: cache sparsity information somewhere so we don't have to compute twice
 
-foo(::Ptr{Void},::Cint,::Ptr{Cint},::Ptr{Cint},::Ptr{Cdouble}) = println("in mat callback")
+function foo(::Ptr{Void},::Cint,::Ptr{Cint},::Ptr{Cint},::Ptr{Cdouble})
+    println("in mat callback")
+    return nothing
+end
 Q = A = B = C = D = foo
 
-bar(::Ptr{Void},::Cint,::Ptr{Cint}) = println("in nnz callback")
+function bar(::Ptr{Void},::Cint,::Ptr{Cint})
+    println("in nnz callback")
+    return nothing
+end
 nnzQ = nnzA = nnzB = nnzC = nnzD = bar
 
-baz(::Ptr{Void},::Cint,::Ptr{Cdouble},::Cint) = println("in vec callback")
-fb = fc = fclow = fcupp = fxlow = fxupp = ficlow = ficupp = fixlow = fixupp = baz
+function baz(::Ptr{Void},::Cint,::Ptr{Cdouble},::Cint)
+    println("in vec callback")
+    return nothing
+end
+b = c = clow = cupp = xlow = xupp = iclow = icupp = ixlow = ixupp = baz
 
 # function Q(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
 #     usr = unsafe_pointer_to_objref(user_data)::UserData
