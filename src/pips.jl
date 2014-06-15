@@ -9,7 +9,7 @@ end
 root = 0
 
 cint(a::Int) = convert(Cint,a)
-vcint(a::Vector{Int}) = convert(Vector{Cint},a)
+vcint(a::Vector{Int}) = pointer(convert(Vector{Cint},a))::Ptr{Cint}
 
 function getConstraintTypes(m::JuMP.Model)
     numRows = length(m.linconstr)

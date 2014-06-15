@@ -7,7 +7,7 @@ function Q(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M
     rowptr, colvals, rownzvals = get_sparse_Q(host)
     unsafe_copy!(krowM, vcint(rowptr.-1), host.numCols+1)
     unsafe_copy!(jcolM, vcint(colvals.-1), length(colvals))
-    unsafe_copy!(M, rownzvals, length(rownzvals))
+    unsafe_copy!(M, pointer(rownzvals), length(rownzvals))
     return nothing
 end
 
@@ -26,9 +26,9 @@ function A(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M
     host = (id == root ? master : child)
     eq_idx, _ = getConstraintTypes(host)
     rowptr, colvals, rownzvals = get_sparse_data(host, master, eq_idx)
-    unsafe_copy!(krowM, vcint(rowptr.-1),    n_eq+1)
+    unsafe_copy!(krowM, vcint(rowptr.-1),    length(eq_idx)+1)
     unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
-    unsafe_copy!(M,     vcint(rownzvals), length(colvals))
+    unsafe_copy!(M,     pointer(rownzvals), length(colvals))
     return nothing
 end
 
@@ -38,9 +38,9 @@ function B(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M
     master, child = usr.master, usr.child
     eq_idx, _ = getConstraintTypes(child)
     rowptr, colvals, rownzvals = get_sparse_data(child, child, eq_idx)
-    unsafe_copy!(krowM, vcint(rowptr.-1),    n_eq+1)
+    unsafe_copy!(krowM, vcint(rowptr.-1),    length(eq_idx)+1)
     unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
-    unsafe_copy!(M,     vcint(rownzvals), length(colvals))
+    unsafe_copy!(M,     pointer(rownzvals), length(colvals))
     return nothing
 end
 
@@ -50,9 +50,9 @@ function C(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M
     host = (id == root ? master : child)
     _, ineq_idx = getConstraintTypes(host)
     rowptr, colvals, rownzvals = get_sparse_data(host, master, ineq_idx)
-    unsafe_copy!(krowM, vcint(rowptr.-1),    n_eq+1)
+    unsafe_copy!(krowM, vcint(rowptr.-1),    length(ineq_idx)+1)
     unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
-    unsafe_copy!(M,     vcint(rownzvals), length(colvals))
+    unsafe_copy!(M,     pointer(rownzvals), length(colvals))
     return nothing
 end
 
@@ -62,9 +62,9 @@ function D(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M
     master, child = usr.master, usr.child
     _, ineq_idx = getConstraintTypes(child)
     rowptr, colvals, rownzvals = get_sparse_data(child, child, ineq_idx)
-    unsafe_copy!(krowM, vcint(rowptr.-1),    n_eq+1)
+    unsafe_copy!(krowM, vcint(rowptr.-1),    length(ineq_idx)+1)
     unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
-    unsafe_copy!(M,     vcint(rownzvals), length(colvals))
+    unsafe_copy!(M,     pointer(rownzvals), length(colvals))
     return nothing
 end
 
@@ -118,8 +118,11 @@ function b(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
     master, child = usr.master, usr.child
     host = (id == root ? master : child)
-    eq_idx, _ = getConstraintTypes(master)
-    _, rlb, _ = JuMP.prepProblemBounds(master)
+    eq_idx, _ = getConstraintTypes(host)
+    _, rlb, _ = JuMP.prepProblemBounds(host)
+    println("len = $len")
+    println("eq_idx = $eq_idx")
+    println("id = $id")
     @assert len == length(eq_idx)
     unsafe_copy!(vec, vcint(rlb[eq_idx]), len)
     return nothing
@@ -129,7 +132,7 @@ function c(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
     master, child = usr.master, usr.child
     host = (id == root ? master : child)
-    f, _, _ = JuMP.prepProblemBounds(master)
+    f, _, _ = JuMP.prepProblemBounds(host)
     @assert len == length(host.numCols)
     unsafe_copy!(vec, vcint(f), len)
     return nothing
@@ -139,7 +142,7 @@ function clow(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
     master, child = usr.master, usr.child
     host = (id == root ? master : child)
-    _, rlb, _ = JuMP.prepProblemBounds(master)
+    _, rlb, _ = JuMP.prepProblemBounds(host)
     @assert len == length(rlb)
     for it in 1:len
         val = (isinf(rlb[it]) ? 0.0 : rlb[it])
@@ -152,7 +155,7 @@ function cupp(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
     master, child = usr.master, usr.child
     host = (id == root ? master : child)
-    _, _, rub = JuMP.prepProblemBounds(master)
+    _, _, rub = JuMP.prepProblemBounds(host)
     @assert len == length(rlb)
     for it in 1:len
         val = (isinf(rlb[it]) ? 0.0 : rub[it])
@@ -165,8 +168,7 @@ function xlow(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
     master, child = usr.master, usr.child
     host = (id == root ? master : child)
-
-    @assert len == length(rlb)
+    @assert len == host.numCols
     for it in 1:len
         val = (isinf(host.colLower[it]) ? 0.0 : host.colLower[it])
         unsafe_store!(vec, convert(Cdouble,val), it)
@@ -178,7 +180,7 @@ function xupp(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
     master, child = usr.master, usr.child
     host = (id == root ? master : child)
-    @assert len == length(rlb)
+    @assert len == host.numCols
     for it in 1:len
         val = (isinf(host.colUpper[it]) ? 0.0 : host.colUpper[it])
         unsafe_store!(vec, convert(Cdouble,val), it)
@@ -216,7 +218,7 @@ function ixlow(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
     master, child = usr.master, usr.child
     host = (id == root ? master : child)
-    @assert len == length(rlb)
+    @assert len == host.numCols
     for it in 1:len
         val = (isinf(host.colLower[it]) ? 0.0 : 1.0)
         unsafe_store!(vec, convert(Cdouble,val), it)
@@ -228,8 +230,7 @@ function ixupp(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
     master, child = usr.master, usr.child
     host = (id == root ? master : child)
-
-    @assert len == length(rlb)
+    @assert len == host.numCols
     for it in 1:len
         val = (isinf(host.colUpper[it]) ? 0.0 : 1.0)
         unsafe_store!(vec, convert(Cdouble,val), it)
