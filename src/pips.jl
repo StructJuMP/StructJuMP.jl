@@ -84,7 +84,6 @@ function pips_solve(master::JuMP.Model)
     child = getchildren(master)[1]
 
     # MPI data
-    MPI.init()
     comm = MPI.COMM_WORLD
 
     root = 0
@@ -102,8 +101,14 @@ function pips_solve(master::JuMP.Model)
     n_eq_m, n_ineq_m = length(eq_idx_m), length(ineq_idx_m)
     n_eq_c, n_ineq_c = length(eq_idx_c), length(ineq_idx_c)
 
+    mpi_comm = Cint[comm.fval]
+
+    MPI.barrier(comm)
+
+    println("comm (julia) = $(comm.fval)")
+
     val = ccall(PIPSSolve, Void, (Ptr{Cint},  # MPI_COMM
-    #val = ccall(("PIPSSolve",libpips), Void, (Ptr{Cint},  # MPI_COMM
+    #val = ccall(("PIPSSolve",libpips), Void, (Ptr{Void},  # MPI_COMM
                                                    Ptr{Void},
                                                    Cint,       # numScens
                                                    Cint,       # nx0
@@ -112,27 +117,27 @@ function pips_solve(master::JuMP.Model)
                                                    Cint,       # nx
                                                    Cint,       # my
                                                    Cint,       # mz
-                                                   Any,  # Q
-                                                   Any,  # nnzQ
-                                                   Any,  # c
-                                                   Any,  # A
-                                                   Any,  # nnzA
-                                                   Any,  # B
-                                                   Any,  # nnzB
-                                                   Any,  # b
-                                                   Any,  # C
-                                                   Any,  # nnzC
-                                                   Any,  # D
-                                                   Any,  # nnzD
-                                                   Any,  # clow
-                                                   Any,  # iclow
-                                                   Any,  # cupp
-                                                   Any,  # icupp
-                                                   Any,  # xlow
-                                                   Any,  # ixlow
-                                                   Any,  # xupp
-                                                   Any), # ixupp
-                                                   &comm.fval,
+                                                   Ptr{Void},  # Q
+                                                   Ptr{Void},  # nnzQ
+                                                   Ptr{Void},  # c
+                                                   Ptr{Void},  # A
+                                                   Ptr{Void},  # nnzA
+                                                   Ptr{Void},  # B
+                                                   Ptr{Void},  # nnzB
+                                                   Ptr{Void},  # b
+                                                   Ptr{Void},  # C
+                                                   Ptr{Void},  # nnzC
+                                                   Ptr{Void},  # D
+                                                   Ptr{Void},  # nnzD
+                                                   Ptr{Void},  # clow
+                                                   Ptr{Void},  # iclow
+                                                   Ptr{Void},  # cupp
+                                                   Ptr{Void},  # icupp
+                                                   Ptr{Void},  # xlow
+                                                   Ptr{Void},  # ixlow
+                                                   Ptr{Void},  # xupp
+                                                   Ptr{Void}), # ixupp
+                                                   Cint[root],
                                                    pointer_from_objref(user_data),
                                                    cint(numScens),
                                                    cint(master.numCols),

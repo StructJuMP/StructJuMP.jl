@@ -1,6 +1,8 @@
 import MPI # put this first!
 using StochJuMP, JuMP
 
+MPI.init()
+
 m = StochasticModel()
 
 n = 10

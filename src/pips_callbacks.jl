@@ -10,7 +10,7 @@ function bar(::Ptr{Void},::Cint,::Ptr{Cint})
     println("in nnz callback")
     return nothing
 end
-nnzQ = nnzA = nnzB = nnzC = nnzD = bar
+nnzQ = nnzB = nnzC = nnzD = bar
 
 function baz(::Ptr{Void},::Cint,::Ptr{Cdouble},::Cint)
     println("in vec callback")
@@ -86,15 +86,16 @@ b = c = clow = cupp = xlow = xupp = iclow = icupp = ixlow = ixupp = baz
 #     return nothing
 # end
 
-# function nnzA(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
-#     usr = unsafe_pointer_to_objref(user_data)::UserData
-#     master, child = usr.master, usr.child
-#     host = (id == root ? master : child)
-#     eq_idx, _ = getConstraintTypes(host)
-#     _, colvals, _ = get_sparse_data(host, master, eq_idx)
-#     unsafe_store!(nnz, cint(length(colvals)), 1)
-#     return nothing
-# end
+function nnzA(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
+    println("in callback!")
+    usr = unsafe_pointer_to_objref(user_data)::UserData
+    master, child = usr.master, usr.child
+    host = (id == root ? master : child)
+    eq_idx, _ = getConstraintTypes(host)
+    _, colvals, _ = get_sparse_data(host, master, eq_idx)
+    unsafe_store!(nnz, cint(length(colvals)), 1)
+    return nothing
+end
 
 # function nnzB(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
 #     if id == root
