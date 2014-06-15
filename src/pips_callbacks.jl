@@ -120,11 +120,8 @@ function b(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     host = (id == root ? master : child)
     eq_idx, _ = getConstraintTypes(host)
     _, rlb, _ = JuMP.prepProblemBounds(host)
-    println("len = $len")
-    println("eq_idx = $eq_idx")
-    println("id = $id")
     @assert len == length(eq_idx)
-    unsafe_copy!(vec, vcint(rlb[eq_idx]), len)
+    unsafe_copy!(vec, pointer(rlb[eq_idx]), len)
     return nothing
 end
 
@@ -134,7 +131,7 @@ function c(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     host = (id == root ? master : child)
     f, _, _ = JuMP.prepProblemBounds(host)
     @assert len == length(host.numCols)
-    unsafe_copy!(vec, vcint(f), len)
+    unsafe_copy!(vec, pointer(f), len)
     return nothing
 end
 
@@ -143,6 +140,8 @@ function clow(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     master, child = usr.master, usr.child
     host = (id == root ? master : child)
     _, rlb, _ = JuMP.prepProblemBounds(host)
+    println("id = $id: len = $len")
+    println("rlb = $rlb")
     @assert len == length(rlb)
     for it in 1:len
         val = (isinf(rlb[it]) ? 0.0 : rlb[it])
