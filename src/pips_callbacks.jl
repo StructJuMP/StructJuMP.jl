@@ -140,10 +140,9 @@ function clow(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     master, child = usr.master, usr.child
     host = (id == root ? master : child)
     _, rlb, _ = JuMP.prepProblemBounds(host)
-    println("id = $id: len = $len")
-    println("rlb = $rlb")
-    @assert len == length(rlb)
-    for it in 1:len
+    _, ineq_idx = getConstraintTypes(host)
+    @assert len == length(ineq_idx)
+    for it in ineq_idx
         val = (isinf(rlb[it]) ? 0.0 : rlb[it])
         unsafe_store!(vec, convert(Cdouble,val), it)
     end
@@ -154,9 +153,10 @@ function cupp(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
     master, child = usr.master, usr.child
     host = (id == root ? master : child)
+    _, ineq_idx = getConstraintTypes(host)
     _, _, rub = JuMP.prepProblemBounds(host)
-    @assert len == length(rlb)
-    for it in 1:len
+    @assert len == length(ineq_idx)
+    for it in ineq_idx
         val = (isinf(rlb[it]) ? 0.0 : rub[it])
         unsafe_store!(vec, convert(Cdouble,val), it)
     end
@@ -191,9 +191,10 @@ function iclow(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
     master, child = usr.master, usr.child
     host = (id == root ? master : child)
-    _, rlb, _ = JuMP.prepProblemBounds(master)
-    @assert len == length(rlb)
-    for it in 1:len
+    _, ineq_idx = getConstraintTypes(host)
+    _, rlb, _ = JuMP.prepProblemBounds(host)
+    @assert len == length(ineq_idx)
+    for it in ineq_idx
         val = (isinf(rlb[it]) ? 0.0 : 1.0)
         unsafe_store!(vec, convert(Cdouble,val), it)
     end
@@ -204,9 +205,10 @@ function icupp(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
     master, child = usr.master, usr.child
     host = (id == root ? master : child)
-    _, _, rub = JuMP.prepProblemBounds(master)
-    @assert len == length(rlb)
-    for it in 1:len
+    _, ineq_idx = getConstraintTypes(host)
+    _, _, rub = JuMP.prepProblemBounds(host)
+    @assert len == length(ineq_idx)
+    for it in ineq_idx
         val = (isinf(rlb[it]) ? 0.0 : 1.0)
         unsafe_store!(vec, convert(Cdouble,val), it)
     end
