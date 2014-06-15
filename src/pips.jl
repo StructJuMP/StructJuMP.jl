@@ -2,9 +2,11 @@ libpips = dlopen("/home/huchette/PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
 PIPSSolve = dlsym(libpips,:PIPSSolve)
 
 type UserData
-    parent :: JuMP.Model
+    master :: JuMP.Model
     child  :: JuMP.Model
 end
+
+root = 0
 
 cint(a::Int) = convert(Cint,a)
 vcint(a::Vector{Int}) = convert(Vector{Cint},a)
@@ -86,7 +88,6 @@ function pips_solve(master::JuMP.Model)
     # MPI data
     comm = MPI.COMM_WORLD
 
-    root = 0
     size = MPI.size(comm)
     rank = MPI.rank(comm)
 
