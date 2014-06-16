@@ -1,4 +1,4 @@
-libpips = dlopen("/home/huchette/PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
+libpips = dlopen("/home/huchette/PIPS_old/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
 PIPSSolve = dlsym(libpips,:PIPSSolve)
 
 type UserData
@@ -41,7 +41,7 @@ function get_sparse_data(owner::JuMP.Model, interest::JuMP.Model, idx_set::Vecto
     rownzval = Float64[]
 
     nnz = 0
-    tmprow   = JuMP.IndexedVector(Float64, owner.numCols)
+    tmprow   = JuMP.IndexedVector(Float64, interest.numCols)
     tmpelts = tmprow.elts
     tmpnzidx = tmprow.nzidx
     for (it,c) in enumerate(idx_set)
