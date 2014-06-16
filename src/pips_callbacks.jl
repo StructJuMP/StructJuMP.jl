@@ -8,7 +8,7 @@ function Q(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M
     unsafe_copy!(krowM, vcint(rowptr.-1), host.numCols+1)
     unsafe_copy!(jcolM, vcint(colvals.-1), length(colvals))
     unsafe_copy!(M, pointer(rownzvals), length(rownzvals))
-    println("Q:")
+    println("Q ($id):")
     println("rowptr    = $rowptr")
     println("colvals   = $colvals")
     println("rownzvals = $rownzvals")
@@ -34,7 +34,7 @@ function A(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M
     unsafe_copy!(krowM, vcint(rowptr.-1),    length(eq_idx)+1)
     unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
     unsafe_copy!(M,     pointer(rownzvals), length(colvals))
-    println("A:")
+    println("A ($id):")
     println("rowptr    = $rowptr")
     println("colvals   = $colvals")
     println("rownzvals = $rownzvals")
@@ -51,7 +51,7 @@ function B(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M
     unsafe_copy!(krowM, vcint(rowptr.-1),    length(eq_idx)+1)
     unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
     unsafe_copy!(M,     pointer(rownzvals), length(colvals))
-    println("B:")
+    println("B ($id):")
     println("rowptr    = $rowptr")
     println("colvals   = $colvals")
     println("rownzvals = $rownzvals")
@@ -68,7 +68,7 @@ function C(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M
     unsafe_copy!(krowM, vcint(rowptr.-1),    length(ineq_idx)+1)
     unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
     unsafe_copy!(M,     pointer(rownzvals), length(colvals))
-    println("C:")
+    println("C ($id):")
     println("rowptr    = $rowptr")
     println("colvals   = $colvals")
     println("rownzvals = $rownzvals")
@@ -85,7 +85,7 @@ function D(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M
     unsafe_copy!(krowM, vcint(rowptr.-1),    length(ineq_idx)+1)
     unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
     unsafe_copy!(M,     pointer(rownzvals), length(colvals))
-    println("D:")
+    println("D ($id):")
     println("rowptr    = $rowptr")
     println("colvals   = $colvals")
     println("rownzvals = $rownzvals")
@@ -100,18 +100,21 @@ function nnzA(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
     eq_idx, _ = getConstraintTypes(host)
     _, colvals, _ = get_sparse_data(host, master, eq_idx)
     unsafe_store!(nnz, cint(length(colvals)), 1)
+    println("nnzA ($id) = $(length(colvals))")
     return nothing
 end
 
 function nnzB(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
     if id == root
         unsafe_store!(nnz, cint(0), 1)
+        println("nnzB ($id) = 0")
     else
         usr = unsafe_pointer_to_objref(user_data)::UserData
         master, child = usr.master, usr.child
         eq_idx, _ = getConstraintTypes(child)
         _, colvals, _ = get_sparse_data(child, child, eq_idx)
         unsafe_store!(nnz, cint(length(colvals)), 1)
+        println("nnzB ($id) = $(length(colvals))")
     end
     return nothing
 end
@@ -123,18 +126,21 @@ function nnzC(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
     _, ineq_idx = getConstraintTypes(host)
     _, colvals, _ = get_sparse_data(host, master, ineq_idx)
     unsafe_store!(nnz, cint(length(colvals)), 1)
+    println("nnzC ($id) = $(length(colvals))")
     return nothing
 end
 
 function nnzD(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
     if id == root
         unsafe_store!(nnz, cint(0), 1)
+        println("nnzD ($id) = 0")
     else
         usr = unsafe_pointer_to_objref(user_data)::UserData
         master, child = usr.master, usr.child
         _, ineq_idx = getConstraintTypes(child)
         _, colvals, _ = get_sparse_data(child, child, ineq_idx)
         unsafe_store!(nnz, cint(length(colvals)), 1)
+        println("nnzD ($id) = $(length(colvals))")
     end
     return nothing
 end
@@ -147,6 +153,7 @@ function b(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     _, rlb, _ = JuMP.prepProblemBounds(host)
     @assert len == length(eq_idx)
     unsafe_copy!(vec, pointer(rlb[eq_idx]), len)
+    println("b ($id) = $(rlb[eq_idx])")
     return nothing
 end
 
@@ -157,6 +164,7 @@ function c(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     f, _, _ = JuMP.prepProblemBounds(host)
     @assert len == length(f)
     unsafe_copy!(vec, pointer(f), len)
+    println("c ($id) = $(f)")
     return nothing
 end
 
