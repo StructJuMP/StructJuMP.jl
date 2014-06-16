@@ -1,4 +1,4 @@
-libpips = dlopen("/home/huchette/PIPS_old/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
+libpips = dlopen("/home/huchette/PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
 PIPSSolve = dlsym(libpips,:PIPSSolve)
 
 type UserData
