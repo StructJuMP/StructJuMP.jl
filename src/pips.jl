@@ -108,6 +108,9 @@ function pips_solve(master::JuMP.Model)
 
     println("comm (julia) = $(comm.fval)")
 
+    obj_val = [0.0]
+    first_primal = Array(Cdouble, master.numCols)
+
     val = ccall(PIPSSolve, Void, (Ptr{Cint},  # MPI_COMM
     #val = ccall(("PIPSSolve",libpips), Void, (Ptr{Void},  # MPI_COMM
                                                    Ptr{Void},
@@ -137,7 +140,9 @@ function pips_solve(master::JuMP.Model)
                                                    Ptr{Void},  # xlow
                                                    Ptr{Void},  # ixlow
                                                    Ptr{Void},  # xupp
-                                                   Ptr{Void}), # ixupp
+                                                   Ptr{Void}, # ixupp
+                                                   Ptr{Cdouble}, # objval
+                                                   Ptr{Cdouble}), # first-stage primal sol
                                                    Cint[root],
                                                    pointer_from_objref(user_data),
                                                    cint(numScens),
@@ -166,7 +171,12 @@ function pips_solve(master::JuMP.Model)
                                                    fxlow,
                                                    fixlow,
                                                    fxupp,
-                                                   fixupp)
+                                                   fixupp,
+                                                   obj_val,
+                                                   first_primal)
+
+    println("objective = $obj_val")
+    println("first stage primal sol = $first_primal")
 
     MPI.finalize()
 end
