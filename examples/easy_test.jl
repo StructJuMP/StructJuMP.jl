@@ -9,13 +9,13 @@ m = StochasticModel()
 @defVar(m, 0 <= y <= 1)
 
 @addConstraint(m, x + y == 1)
-@setObjective(m, Min, x*x + y)
+setObjective(m, :Min, x*x + y)
 
 numScen = 2
 
 bl = StochasticBlock(m, numScen)
 @defVar(bl, w >= 0)
 @addConstraint(bl, w - x - y <= 1)
-setObjective(bl, :Min, w)
+setObjective(bl, :Min, w*w + w)
 
 StochJuMP.pips_solve(m)
