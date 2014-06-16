@@ -8,6 +8,11 @@ function Q(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M
     unsafe_copy!(krowM, vcint(rowptr.-1), host.numCols+1)
     unsafe_copy!(jcolM, vcint(colvals.-1), length(colvals))
     unsafe_copy!(M, pointer(rownzvals), length(rownzvals))
+    println("Q:")
+    println("rowptr    = $rowptr")
+    println("colvals   = $colvals")
+    println("rownzvals = $rownzvals")
+    println()
     return nothing
 end
 
@@ -29,6 +34,11 @@ function A(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M
     unsafe_copy!(krowM, vcint(rowptr.-1),    length(eq_idx)+1)
     unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
     unsafe_copy!(M,     pointer(rownzvals), length(colvals))
+    println("A:")
+    println("rowptr    = $rowptr")
+    println("colvals   = $colvals")
+    println("rownzvals = $rownzvals")
+    println()
     return nothing
 end
 
@@ -41,6 +51,11 @@ function B(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M
     unsafe_copy!(krowM, vcint(rowptr.-1),    length(eq_idx)+1)
     unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
     unsafe_copy!(M,     pointer(rownzvals), length(colvals))
+    println("B:")
+    println("rowptr    = $rowptr")
+    println("colvals   = $colvals")
+    println("rownzvals = $rownzvals")
+    println()
     return nothing
 end
 
@@ -53,6 +68,11 @@ function C(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M
     unsafe_copy!(krowM, vcint(rowptr.-1),    length(ineq_idx)+1)
     unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
     unsafe_copy!(M,     pointer(rownzvals), length(colvals))
+    println("C:")
+    println("rowptr    = $rowptr")
+    println("colvals   = $colvals")
+    println("rownzvals = $rownzvals")
+    println()
     return nothing
 end
 
@@ -65,6 +85,11 @@ function D(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M
     unsafe_copy!(krowM, vcint(rowptr.-1),    length(ineq_idx)+1)
     unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
     unsafe_copy!(M,     pointer(rownzvals), length(colvals))
+    println("D:")
+    println("rowptr    = $rowptr")
+    println("colvals   = $colvals")
+    println("rownzvals = $rownzvals")
+    println()
     return nothing
 end
 
