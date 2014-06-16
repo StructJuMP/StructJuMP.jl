@@ -70,13 +70,13 @@ function get_sparse_Q(m::JuMP.Model)
     n = m.numCols
     vars1 = Int[x.col for x in m.obj.qvars1]
     vars2 = Int[x.col for x in m.obj.qvars2]
-    coeff = m.obj.qcoeffs
+    coeff_copy = copy(m.obj.qcoeffs)
     for i in 1:length(vars1)
         if vars1[i] == vars2[i] # "terms" form
-            coeff[i] *= 2
+            coeff_copy[i] *= 2
         end
     end
-    Q = sparse(vars1, vars2, coeff, n, n)
+    Q = sparse(vars1, vars2, coeff_copy, n, n)
     istriu(Q) && (Q = Q')
     @assert istril(Q)
     return Q.colptr, Q.rowval, Q.nzval
