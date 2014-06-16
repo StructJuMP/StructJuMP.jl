@@ -15,7 +15,7 @@ function nnzQ(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
     usr = unsafe_pointer_to_objref(user_data)::UserData
     master, child = usr.master, usr.child
     host = (id == root ? master : child)
-    _, colvals, _ = get_sparse_Q(tar)
+    _, colvals, _ = get_sparse_Q(host)
     unsafe_store!(nnz, cint(length(colvals)), 1)
     return nothing
 end
@@ -130,7 +130,7 @@ function c(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     master, child = usr.master, usr.child
     host = (id == root ? master : child)
     f, _, _ = JuMP.prepProblemBounds(host)
-    @assert len == length(host.numCols)
+    @assert len == length(f)
     unsafe_copy!(vec, pointer(f), len)
     return nothing
 end
@@ -157,7 +157,7 @@ function cupp(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     _, _, rub = JuMP.prepProblemBounds(host)
     @assert len == length(ineq_idx)
     for it in ineq_idx
-        val = (isinf(rlb[it]) ? 0.0 : rub[it])
+        val = (isinf(rub[it]) ? 0.0 : rub[it])
         unsafe_store!(vec, convert(Cdouble,val), it)
     end
     return nothing
@@ -209,7 +209,7 @@ function icupp(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     _, _, rub = JuMP.prepProblemBounds(host)
     @assert len == length(ineq_idx)
     for it in ineq_idx
-        val = (isinf(rlb[it]) ? 0.0 : 1.0)
+        val = (isinf(rub[it]) ? 0.0 : 1.0)
         unsafe_store!(vec, convert(Cdouble,val), it)
     end
     return nothing
