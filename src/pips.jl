@@ -75,6 +75,9 @@ function get_sparse_Q(m::JuMP.Model)
         if vars1[i] == vars2[i] # "terms" form
             coeff_copy[i] *= 2
         end
+        if vars1[i] > vars2[i]
+            vars1[i], vars2[i] = vars2[i], vars1[i]
+        end
     end
     Q = sparse(vars1, vars2, coeff_copy, n, n)
     istriu(Q) && (Q = Q')
@@ -114,7 +117,10 @@ function pips_solve(master::JuMP.Model)
     println("comm (julia) = $(comm.fval)")
 
     obj_val = [0.0]
-    first_primal = Array(Cdouble, master.numCols)
+    first_primal  = Array(Cdouble, master.numCols)
+    second_primal = Array(Cdouble, numScens*child.numCols)
+    first_dual    = Array(Cdouble, n_ineq_m)
+    second_dual   = Array(Cdouble, numScens*n_eq_m)
 
     val = ccall(PIPSSolve, Void, (Ptr{Cint},  # MPI_COMM
     #val = ccall(("PIPSSolve",libpips), Void, (Ptr{Void},  # MPI_COMM
@@ -147,7 +153,10 @@ function pips_solve(master::JuMP.Model)
                                                    Ptr{Void},  # xupp
                                                    Ptr{Void}, # ixupp
                                                    Ptr{Cdouble}, # objval
-                                                   Ptr{Cdouble}), # first-stage primal sol
+                                                   Ptr{Cdouble}, # first-stage primal sol
+                                                   Ptr{Cdouble}, # second-stage primal so
+                                                   Ptr{Cdouble}, # first-stage dual
+                                                   Ptr{Cdouble}), #second-stage dual
                                                    Cint[root],
                                                    pointer_from_objref(user_data),
                                                    cint(numScens),
@@ -178,10 +187,16 @@ function pips_solve(master::JuMP.Model)
                                                    fxupp,
                                                    fixupp,
                                                    obj_val,
-                                                   first_primal)
+                                                   first_primal,
+                                                   second_primal,
+                                                   first_dual,
+                                                   second_dual)
 
     println("objective = $obj_val")
-    println("first stage primal sol = $first_primal")
+    println("first stage primal sol  = $first_primal")
+    println("second stage primal sol = $second_primal")
+    println("first stage dual sol    = $first_dual")
+    println("second stage dual sol   = $second_dual")
 
     MPI.finalize()
 end
