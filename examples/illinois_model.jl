@@ -8,22 +8,22 @@ NS   = 1
 SCEN = 1:1
 NODES = 1:(NS+1)
 
-# Can probably melt on these dataframes to perform these operations 
+# Can probably melt on these dataframes to perform these operations
 # more efficiently.
 
 # lines
-df = readtable("~/.julia/v0.3/StochJuMP/examples/Illinois/Lines_data.tab", separator='\t', skipstart=1)
+df = readtable("/homes/huchette/.julia/v0.3/StochJuMP/examples/Illinois/Lines_data.tab", separator='\t', skipstart=1)
 LIN          = df[:LIN]
 snd_bus      = Dict(LIN,df[:snd_bus])
 rec_bus      = Dict(LIN,df[:rec_bus])
 Pmax         = Dict(LIN,df[:Pmax])
 
 # buses
-df = readtable("~/.julia/v0.3/StochJuMP/examples/Illinois/bus_data.tab", separator='\t', skipstart=1)
+df = readtable("/homes/huchette/.julia/v0.3/StochJuMP/examples/Illinois/bus_data.tab", separator='\t', skipstart=1)
 BUS     = df[:BUS]
 
 # thermal generators
-df = readtable("~/.julia/v0.3/StochJuMP/examples/Illinois/Gen_data_thermals.tab", separator='\t', skipstart=1)
+df = readtable("/homes/huchette/.julia/v0.3/StochJuMP/examples/Illinois/Gen_data_thermals.tab", separator='\t', skipstart=1)
 GENTHE       = df[:GENTHE]
 bus_genThe   = Dict(GENTHE,df[:bus_genThe])
 np_capThe    = Dict(GENTHE,df[:np_capThe])
@@ -31,24 +31,24 @@ min_hrateThe = Dict(GENTHE,df[:min_hrateThe])
 fuelThe      = Dict(GENTHE,df[:fuelThe])
 
 # wind generators
-df = readtable("~/.julia/v0.3/StochJuMP/examples/Illinois/Gen_data_wind.tab", separator='\t', skipstart=1)
+df = readtable("/homes/huchette/.julia/v0.3/StochJuMP/examples/Illinois/Gen_data_wind.tab", separator='\t', skipstart=1)
 GENWIN     = df[:GENWIN]
 bus_genWin = Dict(GENWIN,df[:bus_genWin])
 np_capWin  = Dict(GENWIN,df[:np_capWin])
 fuelWin    = Dict(GENWIN,df[:fuelWin])
 
 # fuels
-df = readtable("~/.julia/v0.3/StochJuMP/examples/Illinois/fuel_data_distinctPrices.tab", separator='\t', skipstart=1)
+df = readtable("/homes/huchette/.julia/v0.3/StochJuMP/examples/Illinois/fuel_data_distinctPrices.tab", separator='\t', skipstart=1)
 FUEL        = df[:FUEL]
 HV          = Dict(FUEL,df[:HV])
 Unitprice   = Dict(FUEL,df[:Unitprice])
 
 # loads
-df = readtable("~/.julia/v0.3/StochJuMP/examples/Illinois/load_load.tab", separator='\t', skipstart=1)
+df = readtable("/homes/huchette/.julia/v0.3/StochJuMP/examples/Illinois/load_load.tab", separator='\t', skipstart=1)
 LOAD     = df[:LOAD]
 bus_load = Dict(LOAD,df[:bus_load])
 
-df = readdlm("~/.julia/v0.3/StochJuMP/examples/Illinois/Loads.dat", '\t')
+df = readdlm("/homes/huchette/.julia/v0.3/StochJuMP/examples/Illinois/Loads.dat", '\t')
 loads = df[3,:]
 for i in 1:length(loads)
      loads[i] = (loads[i] > 1000 ? 1000 : 1.2*loads[i])
@@ -65,7 +65,7 @@ for i in GENWIN
 end
 
 windPower = Array(Dict{Int,Float64}, NS)
-df = readtable("~/.julia/v0.3/StochJuMP/examples/Illinois/IIDmean_2006_06_04_0_0.dat", header=false)
+df = readtable("/homes/huchette/.julia/v0.3/StochJuMP/examples/Illinois/IIDmean_2006_06_04_0_0.dat", header=false)
 windPower[1] = Dict(GENWIN,df[:x1])
 for s in 2:NS
      windPower[s] = Dict{Int,Float64}()
@@ -119,20 +119,22 @@ for s in SCEN#, node in NODES
 
      @defVar(bl, t[GENTHE] >= 0)
      @addConstraint(bl, t_con1[g=GENTHE],
-                    t[g] >= gen_cost_the[g]*Pgen_f[g] + 
+                    t[g] >= gen_cost_the[g]*Pgen_f[g] +
                     1.2*gen_cost_the[g]*(Pgen[g]-Pgen_f[g]))
      @addConstraint(bl, t_con2[g=GENTHE],
                     t[g] >= gen_cost_the[g]*Pgen_f[g])
 
      @defVar(bl, tw[GENWIN] >= 0)
      @addConstraint(bl, t_w_con1[g=GENWIN],
-                    tw[g] >= gen_cost_win[g]*PgenWin_f[g] + 
+                    tw[g] >= gen_cost_win[g]*PgenWin_f[g] +
                     1.2*gen_cost_win[g]*(PgenWin[g]-PgenWin_f[g]))
      @addConstraint(bl, t_w_con2[g=GENWIN],
                     tw[g] >= gen_cost_win[g]*PgenWin_f[g])
 
      @setObjective(bl, Min, sum{ t[g], g=GENTHE} + sum{tw[g], g=GENWIN})
 end
+
+StochJuMP.pips_solve(m)
 
 # print(m)
 # solve(m)
