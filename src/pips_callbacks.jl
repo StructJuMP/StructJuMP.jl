@@ -170,10 +170,13 @@ function clow(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     _, rlb, _ = JuMP.prepProblemBounds(host)
     _, ineq_idx = getConstraintTypes(host)
     @assert len == length(ineq_idx)
+    print("clow ($id) = [")
     for it in ineq_idx
         val = (isinf(rlb[it]) ? 0.0 : rlb[it])
         unsafe_store!(vec, convert(Cdouble,val), it)
+        print("$val, ")
     end
+    println("]")
     return nothing
 end
 
@@ -183,10 +186,13 @@ function cupp(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     _, ineq_idx = getConstraintTypes(host)
     _, _, rub = JuMP.prepProblemBounds(host)
     @assert len == length(ineq_idx)
+    print("cupp ($id) = [")
     for it in ineq_idx
         val = (isinf(rub[it]) ? 0.0 : rub[it])
         unsafe_store!(vec, convert(Cdouble,val), it)
+        print("$val, ")
     end
+    println("]")
     return nothing
 end
 
@@ -194,10 +200,13 @@ function xlow(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
     host = (id == root ? usr.master : usr.children[id])
     @assert len == host.numCols
+    print("xlow ($id) = [")
     for it in 1:len
         val = (isinf(host.colLower[it]) ? 0.0 : host.colLower[it])
         unsafe_store!(vec, convert(Cdouble,val), it)
+        print("$val, ")
     end
+    println("]")
     return nothing
 end
 
@@ -205,10 +214,13 @@ function xupp(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
     host = (id == root ? usr.master : usr.children[id])
     @assert len == host.numCols
+    print("xupp ($id) = [")
     for it in 1:len
         val = (isinf(host.colUpper[it]) ? 0.0 : host.colUpper[it])
         unsafe_store!(vec, convert(Cdouble,val), it)
+        print("$val, ")
     end
+    println("]")
     return nothing
 end
 
@@ -218,10 +230,13 @@ function iclow(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     _, ineq_idx = getConstraintTypes(host)
     _, rlb, _ = JuMP.prepProblemBounds(host)
     @assert len == length(ineq_idx)
+    print("iclow ($id) = [")
     for it in ineq_idx
         val = (isinf(rlb[it]) ? 0.0 : 1.0)
         unsafe_store!(vec, convert(Cdouble,val), it)
+        print("$val, ")
     end
+    println("]")
     return nothing
 end
 
@@ -231,10 +246,13 @@ function icupp(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     _, ineq_idx = getConstraintTypes(host)
     _, _, rub = JuMP.prepProblemBounds(host)
     @assert len == length(ineq_idx)
+    print("icupp ($id) = [")
     for it in ineq_idx
         val = (isinf(rub[it]) ? 0.0 : 1.0)
         unsafe_store!(vec, convert(Cdouble,val), it)
+        print("$val, ")
     end
+    println("]")
     return nothing
 end
 
@@ -242,10 +260,13 @@ function ixlow(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
     host = (id == root ? usr.master : usr.children[id])
     @assert len == host.numCols
+    print("ixlow ($id) = [")
     for it in 1:len
         val = (isinf(host.colLower[it]) ? 0.0 : 1.0)
         unsafe_store!(vec, convert(Cdouble,val), it)
+        print("$val, ")
     end
+    println("]")
     return nothing
 end
 
@@ -253,10 +274,13 @@ function ixupp(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
     host = (id == root ? usr.master : usr.children[id])
     @assert len == host.numCols
+    print("ixupp ($id) = [")
     for it in 1:len
         val = (isinf(host.colUpper[it]) ? 0.0 : 1.0)
         unsafe_store!(vec, convert(Cdouble,val), it)
+        print("$val, ")
     end
+    println("]")
     return nothing
 end
 
