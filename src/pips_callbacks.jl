@@ -171,9 +171,9 @@ function clow(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     _, ineq_idx = getConstraintTypes(host)
     @assert len == length(ineq_idx)
     print("clow ($id) = [")
-    for it in ineq_idx
+    for (ind,it) in enumerate(ineq_idx)
         val = (isinf(rlb[it]) ? 0.0 : rlb[it])
-        unsafe_store!(vec, convert(Cdouble,val), it)
+        unsafe_store!(vec, convert(Cdouble,val), ind)
         print("$val, ")
     end
     println("]")
@@ -187,9 +187,9 @@ function cupp(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     _, _, rub = JuMP.prepProblemBounds(host)
     @assert len == length(ineq_idx)
     print("cupp ($id) = [")
-    for it in ineq_idx
+    for (ind,it) in ineq_idx
         val = (isinf(rub[it]) ? 0.0 : rub[it])
-        unsafe_store!(vec, convert(Cdouble,val), it)
+        unsafe_store!(vec, convert(Cdouble,val), ind)
         print("$val, ")
     end
     println("]")
@@ -231,9 +231,9 @@ function iclow(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     _, rlb, _ = JuMP.prepProblemBounds(host)
     @assert len == length(ineq_idx)
     print("iclow ($id) = [")
-    for it in ineq_idx
+    for (ind,it) in ineq_idx
         val = (isinf(rlb[it]) ? 0.0 : 1.0)
-        unsafe_store!(vec, convert(Cdouble,val), it)
+        unsafe_store!(vec, convert(Cdouble,val), ind)
         print("$val, ")
     end
     println("]")
@@ -247,9 +247,9 @@ function icupp(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     _, _, rub = JuMP.prepProblemBounds(host)
     @assert len == length(ineq_idx)
     print("icupp ($id) = [")
-    for it in ineq_idx
+    for (ind,it) in ineq_idx
         val = (isinf(rub[it]) ? 0.0 : 1.0)
-        unsafe_store!(vec, convert(Cdouble,val), it)
+        unsafe_store!(vec, convert(Cdouble,val), ind)
         print("$val, ")
     end
     println("]")
