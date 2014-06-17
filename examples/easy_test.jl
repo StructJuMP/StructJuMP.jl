@@ -13,9 +13,11 @@ setObjective(m, :Min, x*x + y)
 
 numScen = 2
 
-bl = StochasticBlock(m, numScen)
-@defVar(bl, w >= 0)
-@addConstraint(bl, w - x - y <= 1)
-setObjective(bl, :Min, w*w + w)
+for i in 1:numScen
+    bl = StochasticBlock(m, numScen)
+    @defVar(bl, w >= 0)
+    @addConstraint(bl, w - x - y <= 1)
+    setObjective(bl, :Min, w*w + w)
+end
 
 StochJuMP.pips_solve(m)
