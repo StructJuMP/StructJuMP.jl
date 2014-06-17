@@ -12,18 +12,18 @@ NODES = 1:(NS+1)
 # more efficiently.
 
 # lines
-df = readtable("Illinois/Lines_data.tab", separator='\t', skipstart=1)
+df = readtable("~/.julia/v0.3/StochJuMP/examples/Illinois/Lines_data.tab", separator='\t', skipstart=1)
 LIN          = df[:LIN]
 snd_bus      = Dict(LIN,df[:snd_bus])
 rec_bus      = Dict(LIN,df[:rec_bus])
 Pmax         = Dict(LIN,df[:Pmax])
 
 # buses
-df = readtable("Illinois/bus_data.tab", separator='\t', skipstart=1)
+df = readtable("~/.julia/v0.3/StochJuMP/examples/Illinois/bus_data.tab", separator='\t', skipstart=1)
 BUS     = df[:BUS]
 
 # thermal generators
-df = readtable("Illinois/Gen_data_thermals.tab", separator='\t', skipstart=1)
+df = readtable("~/.julia/v0.3/StochJuMP/examples/Illinois/Gen_data_thermals.tab", separator='\t', skipstart=1)
 GENTHE       = df[:GENTHE]
 bus_genThe   = Dict(GENTHE,df[:bus_genThe])
 np_capThe    = Dict(GENTHE,df[:np_capThe])
@@ -31,24 +31,24 @@ min_hrateThe = Dict(GENTHE,df[:min_hrateThe])
 fuelThe      = Dict(GENTHE,df[:fuelThe])
 
 # wind generators
-df = readtable("Illinois/Gen_data_wind.tab", separator='\t', skipstart=1)
+df = readtable("~/.julia/v0.3/StochJuMP/examples/Illinois/Gen_data_wind.tab", separator='\t', skipstart=1)
 GENWIN     = df[:GENWIN]
 bus_genWin = Dict(GENWIN,df[:bus_genWin])
 np_capWin  = Dict(GENWIN,df[:np_capWin])
 fuelWin    = Dict(GENWIN,df[:fuelWin])
 
 # fuels
-df = readtable("Illinois/fuel_data_distinctPrices.tab", separator='\t', skipstart=1)
+df = readtable("~/.julia/v0.3/StochJuMP/examples/Illinois/fuel_data_distinctPrices.tab", separator='\t', skipstart=1)
 FUEL        = df[:FUEL]
 HV          = Dict(FUEL,df[:HV])
 Unitprice   = Dict(FUEL,df[:Unitprice])
 
 # loads
-df = readtable("Illinois/load_load.tab", separator='\t', skipstart=1)
+df = readtable("~/.julia/v0.3/StochJuMP/examples/Illinois/load_load.tab", separator='\t', skipstart=1)
 LOAD     = df[:LOAD]
 bus_load = Dict(LOAD,df[:bus_load])
 
-df = readdlm("Illinois/Loads.dat", '\t')
+df = readdlm("~/.julia/v0.3/StochJuMP/examples/Illinois/Loads.dat", '\t')
 loads = df[3,:]
 for i in 1:length(loads)
      loads[i] = (loads[i] > 1000 ? 1000 : 1.2*loads[i])
@@ -65,7 +65,7 @@ for i in GENWIN
 end
 
 windPower = Array(Dict{Int,Float64}, NS)
-df = readtable("Illinois/IIDmean_2006_06_04_0_0.dat", header=false)
+df = readtable("~/.julia/v0.3/StochJuMP/examples/Illinois/IIDmean_2006_06_04_0_0.dat", header=false)
 windPower[1] = Dict(GENWIN,df[:x1])
 for s in 2:NS
      windPower[s] = Dict{Int,Float64}()
