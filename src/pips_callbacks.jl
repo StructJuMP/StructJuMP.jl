@@ -25,7 +25,8 @@ end
 
 function A(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
     usr = unsafe_pointer_to_objref(user_data)::UserData
-    host = (id == root ? usr.master : usr.children[id])
+    master = usr.master
+    host = (id == root ? master : usr.children[id])
     eq_idx, _ = getConstraintTypes(host)
     rowptr, colvals, rownzvals = get_sparse_data(host, master, eq_idx)
     unsafe_copy!(krowM, vcint(rowptr.-1),    length(eq_idx)+1)
@@ -58,7 +59,8 @@ end
 
 function C(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
     usr = unsafe_pointer_to_objref(user_data)::UserData
-    host = (id == root ? usr.master : usr.children[id])
+    master = usr.master
+    host = (id == root ? master : usr.children[id])
     _, ineq_idx = getConstraintTypes(host)
     rowptr, colvals, rownzvals = get_sparse_data(host, master, ineq_idx)
     unsafe_copy!(krowM, vcint(rowptr.-1),    length(ineq_idx)+1)
@@ -91,7 +93,8 @@ end
 
 function nnzA(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
     usr = unsafe_pointer_to_objref(user_data)::UserData
-    host = (id == root ? usr.master : usr.children[id])
+    master = usr.master
+    host = (id == root ? master : usr.children[id])
     eq_idx, _ = getConstraintTypes(host)
     _, colvals, _ = get_sparse_data(host, master, eq_idx)
     unsafe_store!(nnz, cint(length(colvals)), 1)
@@ -116,7 +119,8 @@ end
 
 function nnzC(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
     usr = unsafe_pointer_to_objref(user_data)::UserData
-    host = (id == root ? usr.master : usr.children[id])
+    master = usr.master
+    host = (id == root ? master : usr.children[id])
     _, ineq_idx = getConstraintTypes(host)
     _, colvals, _ = get_sparse_data(host, master, ineq_idx)
     unsafe_store!(nnz, cint(length(colvals)), 1)
