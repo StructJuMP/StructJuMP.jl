@@ -102,7 +102,10 @@ function pips_solve(master::JuMP.Model)
 
     numScens = num_scenarios(master)
     scenPerRank = iceil(numScens/size)
-    @assert (length(children) == numScens == scenPerRank) # while we're running on one proc
+    println("length(children) = $(length(children))")
+    println("num scenarios    = $numScens")
+    println("scens per rank   = $scenPerRank")
+    # @assert (length(children) == numScens == scenPerRank) # while we're running on one proc
 
     user_data = UserData(master, children)
 
