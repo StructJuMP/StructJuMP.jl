@@ -16,13 +16,15 @@ numScen = 2
 
 rhs  = [5,4]
 coef = [2,3]
+qc   = [1,0.5]
+ac   = [1,0.75]
 
 for i in 1:numScen
     bl = StochasticBlock(m, numScen)
     @defVar(bl, 0 <= w <= 1)
-    @addConstraint(bl, coef[i]w - x - y <= rhs)
-    @addConstraint(bl, coef[i]w + x     == rhs)
-    setObjective(bl, :Min, w*w + w)
+    @addConstraint(bl, coef[i]w - x - y <= rhs[i])
+    @addConstraint(bl, coef[i]w + x     == rhs[i])
+    setObjective(bl, :Min, qc[i]*w*w + ac[i]*w)
 end
 
 StochJuMP.pips_solve(m)

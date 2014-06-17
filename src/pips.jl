@@ -89,11 +89,10 @@ include("pips_callbacks.jl")
 
 function pips_solve(master::JuMP.Model)
     @assert getparent(master) == nothing # make sure this is master problem
-    @assert master.sense == :Min
+    @assert master.objSense == :Min
 
     children = getchildren(master)
     child    = children[1]
-    @assert all(child->(child.sense == :Min), children)
 
     # MPI data
     comm = MPI.COMM_WORLD
@@ -103,7 +102,7 @@ function pips_solve(master::JuMP.Model)
 
     numScens = num_scenarios(master)
     scenPerRank = iceil(numScens/size)
-    @assert length(children == numScens == scenPerRank) # while we're running on one proc
+    @assert (length(children) == numScens == scenPerRank) # while we're running on one proc
 
     user_data = UserData(master, children)
 
