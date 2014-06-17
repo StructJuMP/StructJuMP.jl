@@ -124,8 +124,8 @@ function pips_solve(master::JuMP.Model)
     obj_val = [0.0]
     first_primal  = Array(Cdouble, master.numCols)
     second_primal = Array(Cdouble, numScens*child.numCols)
-    first_dual    = Array(Cdouble, n_ineq_m)
-    second_dual   = Array(Cdouble, numScens*n_eq_m)
+    first_dual    = Array(Cdouble, n_eq_m+n_ineq_m)
+    second_dual   = Array(Cdouble, numScens*(n_eq_c+n_ineq_c))
 
     val = ccall(PIPSSolve, Void, (Ptr{Cint},  # MPI_COMM
     #val = ccall(("PIPSSolve",libpips), Void, (Ptr{Void},  # MPI_COMM
