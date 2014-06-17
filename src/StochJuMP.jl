@@ -42,11 +42,11 @@ getparent(m::JuMP.Model)     = getStochastic(m).parent
 getchildren(m::JuMP.Model)   = getStochastic(m).children
 num_scenarios(m::JuMP.Model) = getStochastic(m).num_scen
 
-function StochasticBlock(m::JuMP.Model, nsen)
+function StochasticBlock(m::JuMP.Model)
     stoch = getStochastic(m)
     ch = StochasticModel(JuMP.Model[], m)
     push!(stoch.children, ch)
-    stoch.num_scen += nsen
+    stoch.num_scen += 1
     return ch
 end
 

@@ -20,7 +20,7 @@ qc   = [1,0.5]
 ac   = [1,0.75]
 
 for i in 1:numScen
-    bl = StochasticBlock(m, numScen)
+    bl = StochasticBlock(m)
     @defVar(bl, 0 <= w <= 1)
     @addConstraint(bl, coef[i]w - x - y <= rhs[i])
     @addConstraint(bl, coef[i]w + x     == rhs[i])
