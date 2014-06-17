@@ -108,7 +108,7 @@ function nnzB(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
         println("nnzB ($id) = 0")
     else
         usr = unsafe_pointer_to_objref(user_data)::UserData
-        child = user.children[id]
+        child = usr.children[id]
         eq_idx, _ = getConstraintTypes(child)
         _, colvals, _ = get_sparse_data(child, child, eq_idx)
         unsafe_store!(nnz, cint(length(colvals)), 1)
