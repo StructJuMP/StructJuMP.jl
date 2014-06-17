@@ -1,4 +1,7 @@
-using JuMP, JuMPStoch, DataFrames, Distributions, CPLEX
+import MPI
+using JuMP, StochJuMP, DataFrames, Distributions
+
+MPI.init()
 
 # # scenarios
 NS   = 1
@@ -62,7 +65,7 @@ for i in GENWIN
 end
 
 windPower = Array(Dict{Int,Float64}, NS)
-df = readtable("IIDmean_2006_06_04_0_0.dat", header=false)
+df = readtable("Illinois/IIDmean_2006_06_04_0_0.dat", header=false)
 windPower[1] = Dict(GENWIN,df[:x1])
 for s in 2:NS
      windPower[s] = Dict{Int,Float64}()
@@ -78,7 +81,7 @@ end
 
 lineCutoff = 1
 
-m = StochasticModel(solver=CplexSolver())
+m = StochasticModel()
 
 # Stage 0
 @defVar(m, 0 <= Pgen_f[i=GENTHE] <= np_capThe[i])
@@ -93,8 +96,9 @@ m = StochasticModel(solver=CplexSolver())
                +sum{PgenWin_f[i], i=GENWIN; j==bus_genWin[i]}
                -sum{loads[i], i=LOAD; j==bus_load[i]} >= 0)
 
-for s in SCEN, node in NODES
-     bl = StochasticBlock(m, "$s-$node")
+node = 1
+for s in SCEN#, node in NODES
+     bl = StochasticBlock(m)
      # variables
      @defVar(bl, 0 <= Pgen[i=GENTHE] <= np_capThe[i])
      @defVar(bl, 0 <= PgenWin[i=GENWIN] <= windPower[node][i])
