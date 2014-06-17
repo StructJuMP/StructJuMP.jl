@@ -38,8 +38,8 @@ function getStochastic(m::JuMP.Model)
     end
 end
 
-getparent(m::JuMP.Model) = getStochastic(m).parent
-getchildren(m::JuMP.Model) = getStochastic(m).children
+getparent(m::JuMP.Model)     = getStochastic(m).parent
+getchildren(m::JuMP.Model)   = getStochastic(m).children
 num_scenarios(m::JuMP.Model) = getStochastic(m).num_scen
 
 function StochasticBlock(m::JuMP.Model, nsen)

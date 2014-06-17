@@ -2,11 +2,11 @@ libpips = dlopen("/home/huchette/PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
 PIPSSolve = dlsym(libpips,:PIPSSolve)
 
 type UserData
-    master :: JuMP.Model
-    child  :: JuMP.Model
+    master   :: JuMP.Model
+    children :: Vector{JuMP.Model}
 end
 
-root = 0
+const root = 0
 
 cint(a::Int) = convert(Cint,a)
 vcint(a::Vector{Int}) = pointer(convert(Vector{Cint},a))::Ptr{Cint}
@@ -89,9 +89,11 @@ include("pips_callbacks.jl")
 
 function pips_solve(master::JuMP.Model)
     @assert getparent(master) == nothing # make sure this is master problem
-    @assert length(getchildren(master)) == 1 # only one form of subproblem (at this point)
+    @assert master.sense == :Min
 
-    child = getchildren(master)[1]
+    children = getchildren(master)
+    child    = children[1]
+    @assert all(child->(child.sense == :Min), children)
 
     # MPI data
     comm = MPI.COMM_WORLD
@@ -101,11 +103,12 @@ function pips_solve(master::JuMP.Model)
 
     numScens = num_scenarios(master)
     scenPerRank = iceil(numScens/size)
+    @assert length(children == numScens == scenPerRank) # while we're running on one proc
 
-    user_data = UserData(master, child)
+    user_data = UserData(master, children)
 
     eq_idx_m, ineq_idx_m = getConstraintTypes(master)
-    eq_idx_c, ineq_idx_c = getConstraintTypes(child)
+    eq_idx_c, ineq_idx_c = getConstraintTypes(child) # should probably check this is const across children
 
     n_eq_m, n_ineq_m = length(eq_idx_m), length(ineq_idx_m)
     n_eq_c, n_ineq_c = length(eq_idx_c), length(ineq_idx_c)
