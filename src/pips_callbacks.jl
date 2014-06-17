@@ -94,6 +94,8 @@ end
 function nnzA(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
     usr = unsafe_pointer_to_objref(user_data)::UserData
     master = usr.master
+    println("id = $id")
+    println("idx into = $length(usr.children)")
     host = (id == root ? master : usr.children[id])
     eq_idx, _ = getConstraintTypes(host)
     _, colvals, _ = get_sparse_data(host, master, eq_idx)
