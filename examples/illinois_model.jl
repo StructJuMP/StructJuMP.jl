@@ -104,11 +104,14 @@ for s in SCEN#, node in NODES
      @defVar(bl, 0 <= PgenWin[i=GENWIN] <= windPower[node][i])
      @defVar(bl, -lineCutoff*Pmax[i] <= P[i=LIN] <= lineCutoff*Pmax[i])
 
-     @addConstraint(bl, rampUp[g=GENTHE],
-                    Pgen[g] - Pgen_f[g] <=  np_capThe[g]/10)
+     # @addConstraint(bl, rampUp[g=GENTHE],
+     #                Pgen[g] - Pgen_f[g] <=  np_capThe[g]/10)
 
-     @addConstraint(bl, randDown[g=GENTHE],
-                    Pgen[g] - Pgen_f[g] >= -np_capThe[g]/10)
+     # @addConstraint(bl, randDown[g=GENTHE],
+     #                Pgen[g] - Pgen_f[g] >= -np_capThe[g]/10)
+
+     @addConstraint(bl, rampUpDown[g=GENTHE],
+                    -np_capThe[g]/10 <= Pgen[g] - Pgen_f[g] <=  np_capThe[g]/10)
 
      # (spot) power flow equations
      @addConstraint(bl, pfeq[j=BUS],
