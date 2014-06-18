@@ -22,6 +22,10 @@ if endof(proc_idx_set) > numScens # handle case where numScens is not a multiple
     proc_idx_set = (rank*scenPerRank+1):numScens
 end
 
+println("rank = $rank, size = $size")
+println("scenPerRank  = $scenPerRank")
+println("proc_idx_set = $proc_idx_set")
+
 rhs  = [5,4]
 coef = [2,3]
 qc   = [1,0.5]
