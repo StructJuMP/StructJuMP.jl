@@ -17,7 +17,7 @@ comm = MPI.COMM_WORLD
 size = MPI.size(comm)
 rank = MPI.rank(comm)
 scenPerRank = iceil(numScens/size)
-proc_idx_set = rank*scenPerRank + 1:scenPerRank
+proc_idx_set = rank*scenPerRank + (1:scenPerRank)
 if endof(proc_idx_set) > numScens # handle case where numScens is not a multiple of size
     proc_idx_set = (rank*scenPerRank+1):numScens
 end
