@@ -46,7 +46,6 @@ function StochasticBlock(m::JuMP.Model)
     stoch = getStochastic(m)
     ch = StochasticModel(JuMP.Model[], m)
     push!(stoch.children, ch)
-    stoch.num_scen += 1
     return ch
 end
 
