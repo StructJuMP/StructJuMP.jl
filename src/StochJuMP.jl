@@ -17,9 +17,9 @@ end
 
 StochasticData() = StochasticData(JuMP.Model[],nothing,0)
 
-function StochasticModel()
+function StochasticModel(numScen::Int)
     m = JuMP.Model()
-    m.ext[:Stochastic] = StochasticData()
+    m.ext[:Stochastic] = StochasticData(JuMP.Model[],nothing,numScen)
     return m
 end
 

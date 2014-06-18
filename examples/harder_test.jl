@@ -3,7 +3,8 @@ using StochJuMP, JuMP
 
 MPI.init()
 
-m = StochasticModel()
+numScens = 2
+m = StochasticModel(numScens)
 
 @defVar(m, x >= 1)
 @defVar(m, y <= 2)
@@ -12,14 +13,21 @@ m = StochasticModel()
 @addConstraint(m, -x + y <= 1)
 setObjective(m, :Min, x*x + 0.5x*y + 0.25y*y - y)
 
-numScen = 2
+comm = MPI.COMM_WORLD
+size = MPI.size(comm)
+rank = MPI.rank(comm)
+scenPerRank = iceil(numScens/size)
+proc_idx_set = rank*scenPerRank + 1:scenPerRank
+if endof(proc_idx_set) > numScens # handle case where numScens is not a multiple of size
+    proc_idx_set = (rank*scenPerRank+1):numScens
+end
 
 rhs  = [5,4]
 coef = [2,3]
 qc   = [1,0.5]
 ac   = [1,0.75]
 
-for i in 1:numScen
+for i in proc_idx_set
     bl = StochasticBlock(m)
     @defVar(bl, 0 <= w <= 1)
     @addConstraint(bl, coef[i]w - x - y <= rhs[i])
