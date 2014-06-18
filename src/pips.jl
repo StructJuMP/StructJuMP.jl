@@ -11,6 +11,8 @@ const root = 0
 cint(a::Int) = convert(Cint,a)
 vcint(a::Vector{Int}) = pointer(convert(Vector{Cint},a))::Ptr{Cint}
 
+get_child_index(m::JuMP.Model, id) = return rem1(num_scenarios(m),id)
+
 function getConstraintTypes(m::JuMP.Model)
     numRows = length(m.linconstr)
     eq_idx   = Int[]
