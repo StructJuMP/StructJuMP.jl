@@ -1,4 +1,4 @@
-using StochJuMP, DataFrames, Distributions
+using JuMP, DataFrames, Distributions
 
 # # scenarios
 NS   = 1
@@ -78,7 +78,7 @@ end
 
 lineCutoff = 1
 
-m = StochasticModel()
+m = Model()
 
 # Stage 0
 @defVar(m, 0 <= Pgen_f[i=GENTHE] <= np_capThe[i])
@@ -95,7 +95,8 @@ m = StochasticModel()
 
 node = 1
 for s in SCEN#, node in NODES
-     bl = StochasticBlock(m)
+     # bl = StochasticBlock(m)
+     bl = m
      # variables
      @defVar(bl, 0 <= Pgen[i=GENTHE] <= np_capThe[i])
      @defVar(bl, 0 <= PgenWin[i=GENWIN] <= windPower[node][i])
