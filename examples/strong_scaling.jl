@@ -106,43 +106,43 @@ function solve_illinois(NS::Int)
 
     #for node in NODES
     @second_stage m node begin
-         bl = StochasticBlock(m)
-         # variables
-         @defVar(bl, 0 <= Pgen[i=GENTHE] <= np_capThe[i])
-         @defVar(bl, 0 <= PgenWin[i=GENWIN] <= windPower[node][i])
-         @defVar(bl, -lineCutoff*Pmax[i] <= P[i=LIN] <= lineCutoff*Pmax[i])
+        bl = StochasticBlock(m)
+        # variables
+        @defVar(bl, 0 <= Pgen[i=GENTHE] <= np_capThe[i])
+        @defVar(bl, 0 <= PgenWin[i=GENWIN] <= windPower[node][i])
+        @defVar(bl, -lineCutoff*Pmax[i] <= P[i=LIN] <= lineCutoff*Pmax[i])
 
-         # @addConstraint(bl, rampUp[g=GENTHE],
-         #                Pgen[g] - Pgen_f[g] <=  np_capThe[g]/10)
+        # @addConstraint(bl, rampUp[g=GENTHE],
+        #                Pgen[g] - Pgen_f[g] <=  np_capThe[g]/10)
 
-         # @addConstraint(bl, randDown[g=GENTHE],
-         #                Pgen[g] - Pgen_f[g] >= -np_capThe[g]/10)
+        # @addConstraint(bl, randDown[g=GENTHE],
+        #                Pgen[g] - Pgen_f[g] >= -np_capThe[g]/10)
 
-         @addConstraint(bl, rampUpDown[g=GENTHE],
-                        -np_capThe[g]/10 <= Pgen[g] - Pgen_f[g] <=  np_capThe[g]/10)
+        @addConstraint(bl, rampUpDown[g=GENTHE],
+                       -np_capThe[g]/10 <= Pgen[g] - Pgen_f[g] <=  np_capThe[g]/10)
 
-         # (spot) power flow equations
-         @addConstraint(bl, pfeq[j=BUS],
-                        +sum{P[i]-P_f[i], i=LIN; j==rec_bus[i]}
-                        -sum{P[i]-P_f[i], i=LIN; j==snd_bus[i]}
-                        +sum{Pgen[i]-Pgen_f[i], i=GENTHE; j==bus_genThe[i]}
-                        +sum{PgenWin[i]-PgenWin_f[i], i=GENWIN; j==bus_genWin[i]} >= 0)
+        # (spot) power flow equations
+        @addConstraint(bl, pfeq[j=BUS],
+                       +sum{P[i]-P_f[i], i=LIN; j==rec_bus[i]}
+                       -sum{P[i]-P_f[i], i=LIN; j==snd_bus[i]}
+                       +sum{Pgen[i]-Pgen_f[i], i=GENTHE; j==bus_genThe[i]}
+                       +sum{PgenWin[i]-PgenWin_f[i], i=GENWIN; j==bus_genWin[i]} >= 0)
 
-         @defVar(bl, t[GENTHE] >= 0)
-         @addConstraint(bl, t_con1[g=GENTHE],
+        @defVar(bl, t[GENTHE] >= 0)
+        @addConstraint(bl, t_con1[g=GENTHE],
                         t[g] >= gen_cost_the[g]*Pgen_f[g] +
                         1.2*gen_cost_the[g]*(Pgen[g]-Pgen_f[g]))
-         @addConstraint(bl, t_con2[g=GENTHE],
+        @addConstraint(bl, t_con2[g=GENTHE],
                         t[g] >= gen_cost_the[g]*Pgen_f[g])
 
-         @defVar(bl, tw[GENWIN] >= 0)
-         @addConstraint(bl, t_w_con1[g=GENWIN],
+        @defVar(bl, tw[GENWIN] >= 0)
+        @addConstraint(bl, t_w_con1[g=GENWIN],
                         tw[g] >= gen_cost_win[g]*PgenWin_f[g] +
                         1.2*gen_cost_win[g]*(PgenWin[g]-PgenWin_f[g]))
-         @addConstraint(bl, t_w_con2[g=GENWIN],
+        @addConstraint(bl, t_w_con2[g=GENWIN],
                         tw[g] >= gen_cost_win[g]*PgenWin_f[g])
 
-         @setObjective(bl, Min, sum{ t[g], g=GENTHE} + sum{tw[g], g=GENWIN})
+        @setObjective(bl, Min, sum{ t[g], g=GENTHE} + sum{tw[g], g=GENWIN})
     end
     println("in 6")
 
