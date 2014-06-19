@@ -1,5 +1,4 @@
-import MPI
-using JuMP, StochJuMP, DataFrames, Distributions
+using JuMP, DataFrames, Distributions
 
 # # scenarios
 NS   = 1
@@ -10,44 +9,44 @@ NODES = 1:(NS+1)
 # more efficiently.
 
 # lines
-df = readtable("/home/huchette/.julia/v0.3/StochJuMP/examples/Illinois/Lines_data.tab", separator='\t', skipstart=1)
-LIN          = df[:LIN]
+df = readtable("/Users/huchette/.julia/v0.3/StochJuMP/examples/Illinois/Lines_data.tab", separator='\t', skipstart=1)
+LIN          = df[:LIN][1:2]
 snd_bus      = Dict(LIN,df[:snd_bus])
 rec_bus      = Dict(LIN,df[:rec_bus])
 Pmax         = Dict(LIN,df[:Pmax])
 
 # buses
-df = readtable("/home/huchette/.julia/v0.3/StochJuMP/examples/Illinois/bus_data.tab", separator='\t', skipstart=1)
-BUS     = df[:BUS]
+df = readtable("/Users/huchette/.julia/v0.3/StochJuMP/examples/Illinois/bus_data.tab", separator='\t', skipstart=1)
+BUS     = df[:BUS][1:2]
 
 # thermal generators
-df = readtable("/home/huchette/.julia/v0.3/StochJuMP/examples/Illinois/Gen_data_thermals.tab", separator='\t', skipstart=1)
-GENTHE       = df[:GENTHE]
+df = readtable("/Users/huchette/.julia/v0.3/StochJuMP/examples/Illinois/Gen_data_thermals.tab", separator='\t', skipstart=1)
+GENTHE       = df[:GENTHE][1:2]
 bus_genThe   = Dict(GENTHE,df[:bus_genThe])
 np_capThe    = Dict(GENTHE,df[:np_capThe])
 min_hrateThe = Dict(GENTHE,df[:min_hrateThe])
 fuelThe      = Dict(GENTHE,df[:fuelThe])
 
 # wind generators
-df = readtable("/home/huchette/.julia/v0.3/StochJuMP/examples/Illinois/Gen_data_wind.tab", separator='\t', skipstart=1)
-GENWIN     = df[:GENWIN]
+df = readtable("/Users/huchette/.julia/v0.3/StochJuMP/examples/Illinois/Gen_data_wind.tab", separator='\t', skipstart=1)
+GENWIN     = df[:GENWIN][[end-2,end]]
 bus_genWin = Dict(GENWIN,df[:bus_genWin])
 np_capWin  = Dict(GENWIN,df[:np_capWin])
 fuelWin    = Dict(GENWIN,df[:fuelWin])
 
 # fuels
-df = readtable("/home/huchette/.julia/v0.3/StochJuMP/examples/Illinois/fuel_data_distinctPrices.tab", separator='\t', skipstart=1)
-FUEL        = df[:FUEL]
+df = readtable("/Users/huchette/.julia/v0.3/StochJuMP/examples/Illinois/fuel_data_distinctPrices.tab", separator='\t', skipstart=1)
+FUEL        = df[:FUEL][[1,3,end-2,end-1]]
 HV          = Dict(FUEL,df[:HV])
 Unitprice   = Dict(FUEL,df[:Unitprice])
 
 # loads
-df = readtable("/home/huchette/.julia/v0.3/StochJuMP/examples/Illinois/load_load.tab", separator='\t', skipstart=1)
-LOAD     = df[:LOAD]
+df = readtable("/Users/huchette/.julia/v0.3/StochJuMP/examples/Illinois/load_load.tab", separator='\t', skipstart=1)
+LOAD     = df[:LOAD][1:2]
 bus_load = Dict(LOAD,df[:bus_load])
 
-df = readdlm("/home/huchette/.julia/v0.3/StochJuMP/examples/Illinois/Loads.dat", '\t')
-loads = df[3,:]
+df = readdlm("/Users/huchette/.julia/v0.3/StochJuMP/examples/Illinois/Loads.dat", '\t')
+loads = df[3,:][1:2]
 for i in 1:length(loads)
      loads[i] = (loads[i] > 1000 ? 1000 : 1.2*loads[i])
 end
@@ -63,7 +62,7 @@ for i in GENWIN
 end
 
 windPower = Array(Dict{Int,Float64}, NS)
-df = readtable("/home/huchette/.julia/v0.3/StochJuMP/examples/Illinois/IIDmean_2006_06_04_0_0.dat", header=false)
+df = readtable("/Users/huchette/.julia/v0.3/StochJuMP/examples/Illinois/IIDmean_2006_06_04_0_0.dat", header=false)
 windPower[1] = Dict(GENWIN,df[:x1])
 for s in 2:NS
      windPower[s] = Dict{Int,Float64}()
@@ -79,7 +78,7 @@ end
 
 lineCutoff = 1
 
-m = StochasticModel()
+m = Model()
 
 # Stage 0
 @defVar(m, 0 <= Pgen_f[i=GENTHE] <= np_capThe[i])
@@ -96,20 +95,18 @@ m = StochasticModel()
 
 node = 1
 for s in SCEN#, node in NODES
-     bl = StochasticBlock(m)
+     # bl = StochasticBlock(m)
+     bl = m
      # variables
      @defVar(bl, 0 <= Pgen[i=GENTHE] <= np_capThe[i])
      @defVar(bl, 0 <= PgenWin[i=GENWIN] <= windPower[node][i])
      @defVar(bl, -lineCutoff*Pmax[i] <= P[i=LIN] <= lineCutoff*Pmax[i])
 
-     # @addConstraint(bl, rampUp[g=GENTHE],
-     #                Pgen[g] - Pgen_f[g] <=  np_capThe[g]/10)
+     @addConstraint(bl, rampUp[g=GENTHE],
+                    Pgen[g] - Pgen_f[g] <=  np_capThe[g]/10)
 
-     # @addConstraint(bl, randDown[g=GENTHE],
-     #                Pgen[g] - Pgen_f[g] >= -np_capThe[g]/10)
-
-     @addConstraint(bl, rampUpDown[g=GENTHE],
-                    -np_capThe[g]/10 <= Pgen[g] - Pgen_f[g] <=  np_capThe[g]/10)
+     @addConstraint(bl, randDown[g=GENTHE],
+                    Pgen[g] - Pgen_f[g] >= -np_capThe[g]/10)
 
      # (spot) power flow equations
      @addConstraint(bl, pfeq[j=BUS],
@@ -135,7 +132,6 @@ for s in SCEN#, node in NODES
      @setObjective(bl, Min, sum{ t[g], g=GENTHE} + sum{tw[g], g=GENWIN})
 end
 
-StochJuMP.pips_solve(m)
-
 # print(m)
-# solve(m)
+solve(m)
+println("objective value = $(getObjectiveValue(m))")

@@ -1,4 +1,4 @@
-libpips = dlopen("/home/huchette/PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
+libpips = dlopen("$(ENV["HOME"])/PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
 PIPSSolve = dlsym(libpips,:PIPSSolve)
 
 type UserData
@@ -129,8 +129,8 @@ function pips_solve(master::JuMP.Model)
     first_dual    = Array(Cdouble, n_eq_m+n_ineq_m)
     second_dual   = Array(Cdouble, numScens*(n_eq_c+n_ineq_c))
 
-    val = ccall(PIPSSolve, Void, (Ptr{Cint},  # MPI_COMM
-    #val = ccall(("PIPSSolve",libpips), Void, (Ptr{Void},  # MPI_COMM
+    # val = ccall(PIPSSolve, Void, (Ptr{Cint},  # MPI_COMM
+    val = ccall(("PIPSSolve",libpips), Void, (Ptr{Void},  # MPI_COMM
                                                    Ptr{Void},
                                                    Cint,       # numScens
                                                    Cint,       # nx0
@@ -200,10 +200,10 @@ function pips_solve(master::JuMP.Model)
                                                    second_dual)
 
     println("objective = $obj_val")
-    println("first stage primal sol  = $first_primal")
-    println("second stage primal sol = $second_primal")
-    println("first stage dual sol    = $first_dual")
-    println("second stage dual sol   = $second_dual")
+    #println("first stage primal sol  = $first_primal")
+    #println("second stage primal sol = $second_primal")
+    #println("first stage dual sol    = $first_dual")
+    #println("second stage dual sol   = $second_dual")
 
     MPI.finalize()
 end
