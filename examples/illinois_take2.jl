@@ -3,7 +3,7 @@ using JuMP, StochJuMP, DataFrames, Distributions
 
 MPI.init()
 
-NS = 2
+NS = 4
 
 tic()
 SCEN = 1:NS

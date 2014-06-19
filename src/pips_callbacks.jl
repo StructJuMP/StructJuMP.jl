@@ -8,11 +8,11 @@ function Q(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M
     unsafe_copy!(krowM, vcint(rowptr.-1), host.numCols+1)
     unsafe_copy!(jcolM, vcint(colvals.-1), length(colvals))
     unsafe_copy!(M, pointer(rownzvals), length(rownzvals))
-    println("Q ($id):")
-    println("rowptr    = $rowptr")
-    println("colvals   = $colvals")
-    println("rownzvals = $rownzvals")
-    println()
+    #println("Q ($id):")
+    #println("rowptr    = $rowptr")
+    #println("colvals   = $colvals")
+    #println("rownzvals = $rownzvals")
+    #println()
     return nothing
 end
 
@@ -35,11 +35,11 @@ function A(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M
     unsafe_copy!(krowM, vcint(rowptr.-1),    length(eq_idx)+1)
     unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
     unsafe_copy!(M,     pointer(rownzvals), length(colvals))
-    println("A ($id):")
-    println("rowptr    = $rowptr")
-    println("colvals   = $colvals")
-    println("rownzvals = $rownzvals")
-    println()
+    #println("A ($id):")
+    #println("rowptr    = $rowptr")
+    #println("colvals   = $colvals")
+    #println("rownzvals = $rownzvals")
+    #println()
     return nothing
 end
 
@@ -53,11 +53,11 @@ function B(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M
     unsafe_copy!(krowM, vcint(rowptr.-1),    length(eq_idx)+1)
     unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
     unsafe_copy!(M,     pointer(rownzvals), length(colvals))
-    println("B ($id):")
-    println("rowptr    = $rowptr")
-    println("colvals   = $colvals")
-    println("rownzvals = $rownzvals")
-    println()
+    #println("B ($id):")
+    #println("rowptr    = $rowptr")
+    #println("colvals   = $colvals")
+    #println("rownzvals = $rownzvals")
+    #println()
     return nothing
 end
 
@@ -71,11 +71,11 @@ function C(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M
     unsafe_copy!(krowM, vcint(rowptr.-1),    length(ineq_idx)+1)
     unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
     unsafe_copy!(M,     pointer(rownzvals), length(colvals))
-    println("C ($id):")
-    println("rowptr    = $rowptr")
-    println("colvals   = $colvals")
-    println("rownzvals = $rownzvals")
-    println()
+    #println("C ($id):")
+    #println("rowptr    = $rowptr")
+    #println("colvals   = $colvals")
+    #println("rownzvals = $rownzvals")
+    #println()
     return nothing
 end
 
@@ -89,11 +89,11 @@ function D(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M
     unsafe_copy!(krowM, vcint(rowptr.-1),    length(ineq_idx)+1)
     unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
     unsafe_copy!(M,     pointer(rownzvals), length(colvals))
-    println("D ($id):")
-    println("rowptr    = $rowptr")
-    println("colvals   = $colvals")
-    println("rownzvals = $rownzvals")
-    println()
+    #println("D ($id):")
+    #println("rowptr    = $rowptr")
+    #println("colvals   = $colvals")
+    #println("rownzvals = $rownzvals")
+    #println()
     return nothing
 end
 
@@ -105,14 +105,14 @@ function nnzA(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
     eq_idx, _ = getConstraintTypes(host)
     _, colvals, _ = get_sparse_data(host, master, eq_idx)
     unsafe_store!(nnz, cint(length(colvals)), 1)
-    println("nnzA ($id) = $(length(colvals))")
+    #println("nnzA ($id) = $(length(colvals))")
     return nothing
 end
 
 function nnzB(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
     if id == root
         unsafe_store!(nnz, cint(0), 1)
-        println("nnzB ($id) = 0")
+        #println("nnzB ($id) = 0")
     else
         usr = unsafe_pointer_to_objref(user_data)::UserData
         child_id = get_child_index(usr.master, id)
@@ -120,7 +120,7 @@ function nnzB(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
         eq_idx, _ = getConstraintTypes(child)
         _, colvals, _ = get_sparse_data(child, child, eq_idx)
         unsafe_store!(nnz, cint(length(colvals)), 1)
-        println("nnzB ($id) = $(length(colvals))")
+        #println("nnzB ($id) = $(length(colvals))")
     end
     return nothing
 end
@@ -133,14 +133,14 @@ function nnzC(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
     _, ineq_idx = getConstraintTypes(host)
     _, colvals, _ = get_sparse_data(host, master, ineq_idx)
     unsafe_store!(nnz, cint(length(colvals)), 1)
-    println("nnzC ($id) = $(length(colvals))")
+    #println("nnzC ($id) = $(length(colvals))")
     return nothing
 end
 
 function nnzD(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
     if id == root
         unsafe_store!(nnz, cint(0), 1)
-        println("nnzD ($id) = 0")
+        #println("nnzD ($id) = 0")
     else
         usr = unsafe_pointer_to_objref(user_data)::UserData
         child_id = get_child_index(usr.master, id)
@@ -148,7 +148,7 @@ function nnzD(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
         _, ineq_idx = getConstraintTypes(child)
         _, colvals, _ = get_sparse_data(child, child, ineq_idx)
         unsafe_store!(nnz, cint(length(colvals)), 1)
-        println("nnzD ($id) = $(length(colvals))")
+        #println("nnzD ($id) = $(length(colvals))")
     end
     return nothing
 end
@@ -161,7 +161,7 @@ function b(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     _, rlb, _ = JuMP.prepProblemBounds(host)
     @assert len == length(eq_idx)
     unsafe_copy!(vec, pointer(rlb[eq_idx]), len)
-    println("b ($id) = $(rlb[eq_idx])")
+    #println("b ($id) = $(rlb[eq_idx])")
     return nothing
 end
 
@@ -172,7 +172,7 @@ function c(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     f, _, _ = JuMP.prepProblemBounds(host)
     @assert len == length(f)
     unsafe_copy!(vec, pointer(f), len)
-    println("c ($id) = $(f)")
+    #println("c ($id) = $(f)")
     return nothing
 end
 
@@ -183,13 +183,13 @@ function clow(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     _, rlb, _ = JuMP.prepProblemBounds(host)
     _, ineq_idx = getConstraintTypes(host)
     @assert len == length(ineq_idx)
-    print("clow ($id) = [")
+    #print("clow ($id) = [")
     for (ind,it) in enumerate(ineq_idx)
         val = (isinf(rlb[it]) ? 0.0 : rlb[it])
         unsafe_store!(vec, convert(Cdouble,val), ind)
-        print("$val, ")
+        #print("$val, ")
     end
-    println("]")
+    #println("]")
     return nothing
 end
 
@@ -200,13 +200,13 @@ function cupp(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     _, ineq_idx = getConstraintTypes(host)
     _, _, rub = JuMP.prepProblemBounds(host)
     @assert len == length(ineq_idx)
-    print("cupp ($id) = [")
+    #print("cupp ($id) = [")
     for (ind,it) in enumerate(ineq_idx)
         val = (isinf(rub[it]) ? 0.0 : rub[it])
         unsafe_store!(vec, convert(Cdouble,val), ind)
-        print("$val, ")
+        #print("$val, ")
     end
-    println("]")
+    #println("]")
     return nothing
 end
 
@@ -215,13 +215,13 @@ function xlow(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     child_id = get_child_index(usr.master, id)
     host = (id == root ? usr.master : usr.children[child_id])
     @assert len == host.numCols
-    print("xlow ($id) = [")
+    #print("xlow ($id) = [")
     for it in 1:len
         val = (isinf(host.colLower[it]) ? 0.0 : host.colLower[it])
         unsafe_store!(vec, convert(Cdouble,val), it)
-        print("$val, ")
+        #print("$val, ")
     end
-    println("]")
+    #println("]")
     return nothing
 end
 
@@ -230,13 +230,13 @@ function xupp(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     child_id = get_child_index(usr.master, id)
     host = (id == root ? usr.master : usr.children[child_id])
     @assert len == host.numCols
-    print("xupp ($id) = [")
+    #print("xupp ($id) = [")
     for it in 1:len
         val = (isinf(host.colUpper[it]) ? 0.0 : host.colUpper[it])
         unsafe_store!(vec, convert(Cdouble,val), it)
-        print("$val, ")
+        #print("$val, ")
     end
-    println("]")
+    #println("]")
     return nothing
 end
 
@@ -247,13 +247,13 @@ function iclow(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     _, ineq_idx = getConstraintTypes(host)
     _, rlb, _ = JuMP.prepProblemBounds(host)
     @assert len == length(ineq_idx)
-    print("iclow ($id) = [")
+    #print("iclow ($id) = [")
     for (ind,it) in enumerate(ineq_idx)
         val = (isinf(rlb[it]) ? 0.0 : 1.0)
         unsafe_store!(vec, convert(Cdouble,val), ind)
-        print("$val, ")
+        #print("$val, ")
     end
-    println("]")
+    #println("]")
     return nothing
 end
 
@@ -264,13 +264,13 @@ function icupp(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     _, ineq_idx = getConstraintTypes(host)
     _, _, rub = JuMP.prepProblemBounds(host)
     @assert len == length(ineq_idx)
-    print("icupp ($id) = [")
+    #print("icupp ($id) = [")
     for (ind,it) in enumerate(ineq_idx)
         val = (isinf(rub[it]) ? 0.0 : 1.0)
         unsafe_store!(vec, convert(Cdouble,val), ind)
-        print("$val, ")
+        #print("$val, ")
     end
-    println("]")
+    #println("]")
     return nothing
 end
 
@@ -279,13 +279,13 @@ function ixlow(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     child_id = get_child_index(usr.master, id)
     host = (id == root ? usr.master : usr.children[child_id])
     @assert len == host.numCols
-    print("ixlow ($id) = [")
+    #print("ixlow ($id) = [")
     for it in 1:len
         val = (isinf(host.colLower[it]) ? 0.0 : 1.0)
         unsafe_store!(vec, convert(Cdouble,val), it)
-        print("$val, ")
+        #print("$val, ")
     end
-    println("]")
+    #println("]")
     return nothing
 end
 
@@ -294,13 +294,13 @@ function ixupp(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     child_id = get_child_index(usr.master, id)
     host = (id == root ? usr.master : usr.children[child_id])
     @assert len == host.numCols
-    print("ixupp ($id) = [")
+    #print("ixupp ($id) = [")
     for it in 1:len
         val = (isinf(host.colUpper[it]) ? 0.0 : 1.0)
         unsafe_store!(vec, convert(Cdouble,val), it)
-        print("$val, ")
+        #print("$val, ")
     end
-    println("]")
+    #println("]")
     return nothing
 end
 

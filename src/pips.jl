@@ -125,8 +125,6 @@ function pips_solve(master::JuMP.Model)
 
     MPI.barrier(comm)
 
-    println("comm (julia) = $(comm.fval)")
-
     obj_val = [0.0]
     first_primal  = Array(Cdouble, master.numCols)
     second_primal = Array(Cdouble, numScens*child.numCols)
@@ -203,7 +201,7 @@ function pips_solve(master::JuMP.Model)
                                                    first_dual,
                                                    second_dual)
 
-    println("objective = $obj_val")
+    rank == 0 && println("objective = $obj_val")
     #println("first stage primal sol  = $first_primal")
     #println("second stage primal sol = $second_primal")
     #println("first stage dual sol    = $first_dual")
