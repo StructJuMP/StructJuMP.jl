@@ -108,8 +108,6 @@ function pips_solve(master::JuMP.Model)
 
     numScens = num_scenarios(master)
 
-    numScens < size && error("Fewer scenarios than processes")
-
     scenPerRank = iceil(numScens/size)
     println("length(children) = $(length(children))")
     println("num scenarios    = $numScens")
