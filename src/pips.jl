@@ -198,10 +198,10 @@ function pips_solve(master::JuMP.Model)
                                                    second_dual)
 
     println("objective = $obj_val")
-    println("first stage primal sol  = $first_primal")
-    println("second stage primal sol = $second_primal")
-    println("first stage dual sol    = $first_dual")
-    println("second stage dual sol   = $second_dual")
+    #println("first stage primal sol  = $first_primal")
+    #println("second stage primal sol = $second_primal")
+    #println("first stage dual sol    = $first_dual")
+    #println("second stage dual sol   = $second_dual")
 
     MPI.finalize()
 end

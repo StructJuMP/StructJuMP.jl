@@ -3,7 +3,7 @@ using JuMP, StochJuMP, DataFrames, Distributions
 
 MPI.init()
 
-N = 100
+N = 1000
 numScen = 1
 
 m = StochasticModel()
@@ -13,8 +13,8 @@ m = StochasticModel()
 @setObjective(m, Min, sum{x[i], i=1:N})
 
 bl = StochasticBlock(m)
-@defVar(m, y[1:N] >= 0)
-@addConstraint(bl, constr[r=1:N], x[r] + x[r] >= 1/2)
+@defVar(bl, y[1:N] >= 0)
+@addConstraint(bl, constr[r=1:N], x[r] + y[r] >= 1/2)
 @setObjective(bl, Min, sum{y[i], i=1:N})
 
 StochJuMP.pips_solve(m)

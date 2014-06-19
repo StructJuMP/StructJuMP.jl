@@ -18,6 +18,7 @@ end
 StochasticData() = StochasticData(JuMP.Model[],nothing,0)
 
 function StochasticModel()
+    MPI.init()
     m = JuMP.Model()
     m.ext[:Stochastic] = StochasticData()
     return m

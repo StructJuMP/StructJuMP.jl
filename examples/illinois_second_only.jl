@@ -1,8 +1,6 @@
 import MPI
 using JuMP, StochJuMP, DataFrames, Distributions
 
-MPI.init()
-
 # # scenarios
 NS   = 1
 SCEN = 1:1
@@ -81,9 +79,9 @@ end
 
 lineCutoff = 1
 
-m = StochasticModel()
+bl = StochasticModel()
 
-bl = StochasticBlock(m)
+m = StochasticBlock(bl)
 @defVar(bl, dummyz >= 0)
 
 # Stage 0
@@ -125,7 +123,7 @@ node = 1
 @addConstraint(m, t_con1[g=GENTHE],
                t[g] >= gen_cost_the[g]*Pgen_f[g] +
                1.2*gen_cost_the[g]*(Pgen[g]-Pgen_f[g]))
-@addConstraint(bl, t_con2[g=GENTHE],
+@addConstraint(m, t_con2[g=GENTHE],
                t[g] >= gen_cost_the[g]*Pgen_f[g])
 
 @defVar(m, tw[GENWIN] >= 0)
@@ -137,7 +135,7 @@ node = 1
 
 @setObjective(m, Min, sum{ t[g], g=GENTHE} + sum{tw[g], g=GENWIN})
 
-StochJuMP.pips_solve(m)
+StochJuMP.pips_solve(bl)
 
 # print(m)
 # solve(m)
