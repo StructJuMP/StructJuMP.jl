@@ -1,8 +1,6 @@
 import MPI
 using JuMP, StochJuMP, DataFrames, Distributions
 
-MPI.init()
-
 # # scenarios
 NS   = 1
 SCEN = 1:1

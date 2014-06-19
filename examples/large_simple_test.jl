@@ -1,8 +1,6 @@
 import MPI
 using JuMP, StochJuMP, DataFrames, Distributions
 
-MPI.init()
-
 N = 1000
 numScen = 1
 
