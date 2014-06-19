@@ -1,11 +1,13 @@
 import MPI
 using JuMP, StochJuMP, DataFrames, Distributions
 
+MPI.init()
+
 function solve_illinois(NS::Int)
 
     tic()
     SCEN = 1:NS
-    NODES = 1:(NS+1)
+    NODES = 1:NS
 
     # lines
     df = readtable("/home/huchette/.julia/v0.3/StochJuMP/examples/Illinois/Lines_data.tab", separator='\t', skipstart=1)
@@ -79,7 +81,7 @@ function solve_illinois(NS::Int)
     end
 
     # model the thing
-    m = StochasticModel()
+    m = StochasticModel(NS)
 
     # Stage 0
     @defVar(m, 0 <= Pgen_f[i=GENTHE] <= np_capThe[i])
@@ -94,7 +96,8 @@ function solve_illinois(NS::Int)
                    +sum{PgenWin_f[i], i=GENWIN; j==bus_genWin[i]}
                    -sum{loads[i], i=LOAD; j==bus_load[i]} >= 0)
 
-    for node in NODES
+    #for node in NODES
+    @second_stage m node begin
          bl = StochasticBlock(m)
          # variables
          @defVar(bl, 0 <= Pgen[i=GENTHE] <= np_capThe[i])
@@ -133,7 +136,7 @@ function solve_illinois(NS::Int)
 
          @setObjective(bl, Min, sum{ t[g], g=GENTHE} + sum{tw[g], g=GENWIN})
 
-         pips_time = pips_solve(m)
+         pips_time = StochJuMP.pips_solve(m)
          elapsed = toc()
          jump_time = elapsed - pips_time
 
@@ -147,15 +150,14 @@ solve_illinois(1)
 
 fp = open("strong_scaling.txt", "w")
 
-for NS in 1:(2 .^ 0:10)
+for NS in 2 .^ (0:10)
     jump_time, pips_time = solve_illinois(NS)
-    println("NS = $NS")
-    println("--------")
-    println("* JuMP elapsed: $jump_time sec")
-    println("* PIPS elapsed: $pips_time sec")
+    println(fp, "NS = $NS")
+    println(fp, "--------")
+    println(fp, "* JuMP elapsed: $jump_time sec")
+    println(fp, "* PIPS elapsed: $pips_time sec")
     println()
 end
 
+MPI.finalize()
 
-
-en

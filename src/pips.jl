@@ -11,7 +11,11 @@ const root = 0
 cint(a::Int) = convert(Cint,a)
 vcint(a::Vector{Int}) = pointer(convert(Vector{Cint},a))::Ptr{Cint}
 
-get_child_index(m::JuMP.Model, id) = return rem1(num_scenarios(m),id)
+function get_child_index(m::JuMP.Model, id)
+    size = MPI.size(MPI.COMM_WORLD)
+    scenPerRank = iceil(num_scenarios(m)/size)
+    rem1(id+1,scenPerRank)
+end
 
 function getConstraintTypes(m::JuMP.Model)
     numRows = length(m.linconstr)
@@ -129,7 +133,7 @@ function pips_solve(master::JuMP.Model)
     first_dual    = Array(Cdouble, n_eq_m+n_ineq_m)
     second_dual   = Array(Cdouble, numScens*(n_eq_c+n_ineq_c))
 
-    val = ccall(PIPSSolve, Void, (Ptr{Cint},  # MPI_COMM
+    val = @elapsed ccall(PIPSSolve, Void, (Ptr{Cint},  # MPI_COMM
     #val = ccall(("PIPSSolve",libpips), Void, (Ptr{Void},  # MPI_COMM
                                                    Ptr{Void},
                                                    Cint,       # numScens
@@ -205,5 +209,6 @@ function pips_solve(master::JuMP.Model)
     #println("first stage dual sol    = $first_dual")
     #println("second stage dual sol   = $second_dual")
 
-    MPI.finalize()
+    #MPI.finalize()
+    return val
 end

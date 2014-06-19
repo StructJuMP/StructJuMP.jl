@@ -42,7 +42,7 @@ end
 StochasticData() = StochasticData(JuMP.Model[],nothing,0)
 
 function StochasticModel(numScen::Int)
-    MPI.init()
+    # MPI.init()
     m = JuMP.Model()
     m.ext[:Stochastic] = StochasticData(JuMP.Model[],nothing,numScen)
     return m

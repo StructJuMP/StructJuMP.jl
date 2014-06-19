@@ -1,10 +1,10 @@
 import MPI
 using JuMP, StochJuMP, DataFrames, Distributions
 
-N = 3
+N = 1000
 numScen = 1
 
-m = StochasticModel()
+m = StochasticModel(numScen)
 
 @defVar(m, x[1:N] >= 0)
 @addConstraint(m, sum{x[i], i=1:N} >= -1)
