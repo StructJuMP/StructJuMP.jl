@@ -127,8 +127,8 @@ function pips_solve(master::JuMP.Model)
     first_dual    = Array(Cdouble, n_eq_m+n_ineq_m)
     second_dual   = Array(Cdouble, numScens*(n_eq_c+n_ineq_c))
 
-    # val = ccall(PIPSSolve, Void, (Ptr{Cint},  # MPI_COMM
-    val = ccall(("PIPSSolve",libpips), Void, (Ptr{Void},  # MPI_COMM
+    val = ccall(PIPSSolve, Void, (Ptr{Cint},  # MPI_COMM
+    #val = ccall(("PIPSSolve",libpips), Void, (Ptr{Void},  # MPI_COMM
                                                    Ptr{Void},
                                                    Cint,       # numScens
                                                    Cint,       # nx0
