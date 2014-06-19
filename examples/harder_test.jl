@@ -1,9 +1,10 @@
-import MPI # put this first!
+# import MPI # put this first!
 using StochJuMP, JuMP
 
-MPI.init()
+# MPI.init()
 
-m = StochasticModel()
+numScens = 2
+m = StochasticModel(numScens)
 
 @defVar(m, x >= 1)
 @defVar(m, y <= 2)
@@ -12,19 +13,17 @@ m = StochasticModel()
 @addConstraint(m, -x + y <= 1)
 setObjective(m, :Min, x*x + 0.5x*y + 0.25y*y - y)
 
-numScen = 2
-
 rhs  = [5,4]
 coef = [2,3]
 qc   = [1,0.5]
 ac   = [1,0.75]
 
-for i in 1:numScen
+@second_stage m scen begin
     bl = StochasticBlock(m)
     @defVar(bl, 0 <= w <= 1)
-    @addConstraint(bl, coef[i]w - x - y <= rhs[i])
-    @addConstraint(bl, coef[i]w + x     == rhs[i])
-    setObjective(bl, :Min, qc[i]*w*w + ac[i]*w)
+    @addConstraint(bl, coef[scen]w - x - y <= rhs[scen])
+    @addConstraint(bl, coef[scen]w + x     == rhs[scen])
+    setObjective(bl, :Min, qc[scen]*w*w + ac[scen]*w)
 end
 
 StochJuMP.pips_solve(m)

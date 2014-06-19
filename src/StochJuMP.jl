@@ -7,7 +7,31 @@ import JuMP
 import MathProgBase
 import MathProgBase.MathProgSolverInterface
 
-export StochasticModel, getStochastic, getparent, getchildren, num_scenarios, StochasticBlock
+export StochasticModel, getStochastic, getparent, getchildren, 
+       num_scenarios, StochasticBlock, @second_stage
+
+#############################################################################
+# JuMP rexports
+export
+# Objects
+    Model, Variable, AffExpr, QuadExpr, LinearConstraint, QuadConstraint, MultivarDict,
+    ConstraintRef,
+# Functions
+    # Model related
+    getNumVars, getNumConstraints, getObjectiveValue, getObjective,
+    getObjectiveSense, setObjectiveSense, writeLP, writeMPS, setObjective,
+    addConstraint, addSOS1, addSOS2, solve,
+    getInternalModel, setPresolve, buildInternalModel,
+    # Variable
+    setName, getName, setLower, setUpper, getLower, getUpper,
+    getValue, setValue, getDual,
+    # Expressions and constraints
+    affToStr, quadToStr, conToStr, chgConstrRHS,
+    
+# Macros and support functions
+    @addConstraint, @addConstraints, @defVar, 
+    @defConstrRef, @setObjective, addToExpression,
+    @setNLObjective, @addNLConstraint, @gendict
 
 type StochasticData
     children::Vector{JuMP.Model}
@@ -17,10 +41,10 @@ end
 
 StochasticData() = StochasticData(JuMP.Model[],nothing,0)
 
-function StochasticModel()
+function StochasticModel(numScen::Int)
     MPI.init()
     m = JuMP.Model()
-    m.ext[:Stochastic] = StochasticData()
+    m.ext[:Stochastic] = StochasticData(JuMP.Model[],nothing,numScen)
     return m
 end
 
@@ -47,8 +71,24 @@ function StochasticBlock(m::JuMP.Model)
     stoch = getStochastic(m)
     ch = StochasticModel(JuMP.Model[], m)
     push!(stoch.children, ch)
-    stoch.num_scen += 1
     return ch
+end
+
+macro second_stage(m,ind,code)
+    return quote
+        numScens = num_scenarios($(esc(m)))
+        comm = MPI.COMM_WORLD
+        size = MPI.size(comm)
+        rank = MPI.rank(comm)
+        scenPerRank = iceil(numScens/size)
+        proc_idx_set = rank*scenPerRank + (1:scenPerRank)
+        if endof(proc_idx_set) > numScens # handle case where numScens is not a multiple of size
+            proc_idx_set = start(proc_idx_set):numScens
+        end
+        for $(esc(ind)) in proc_idx_set
+            $(esc(code))
+        end
+    end
 end
 
 include("pips.jl")
