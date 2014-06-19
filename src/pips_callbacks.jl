@@ -2,7 +2,8 @@
 
 function Q(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
     usr = unsafe_pointer_to_objref(user_data)::UserData
-    host = (id == root ? usr.master : usr.children[id])
+    child_id = get_child_index(usr.master, id)
+    host = (id == root ? usr.master : usr.children[child_id])
     rowptr, colvals, rownzvals = get_sparse_Q(host)
     unsafe_copy!(krowM, vcint(rowptr.-1), host.numCols+1)
     unsafe_copy!(jcolM, vcint(colvals.-1), length(colvals))
@@ -17,7 +18,8 @@ end
 
 function nnzQ(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
     usr = unsafe_pointer_to_objref(user_data)::UserData
-    host = (id == root ? usr.master : usr.children[id])
+    child_id = get_child_index(usr.master, id)
+    host = (id == root ? usr.master : usr.children[child_id])
     _, colvals, _ = get_sparse_Q(host)
     unsafe_store!(nnz, cint(length(colvals)), 1)
     return nothing
@@ -26,7 +28,8 @@ end
 function A(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
     usr = unsafe_pointer_to_objref(user_data)::UserData
     master = usr.master
-    host = (id == root ? master : usr.children[id])
+    child_id = get_child_index(master, id)
+    host = (id == root ? master : usr.children[child_id])
     eq_idx, _ = getConstraintTypes(host)
     rowptr, colvals, rownzvals = get_sparse_data(host, master, eq_idx)
     unsafe_copy!(krowM, vcint(rowptr.-1),    length(eq_idx)+1)
@@ -43,7 +46,8 @@ end
 function B(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
     id == root && return nothing
     usr = unsafe_pointer_to_objref(user_data)::UserData
-    child = usr.children[id]
+    child_id = get_child_index(usr.master, id)
+    child = usr.children[child_id]
     eq_idx, _ = getConstraintTypes(child)
     rowptr, colvals, rownzvals = get_sparse_data(child, child, eq_idx)
     unsafe_copy!(krowM, vcint(rowptr.-1),    length(eq_idx)+1)
@@ -60,7 +64,8 @@ end
 function C(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
     usr = unsafe_pointer_to_objref(user_data)::UserData
     master = usr.master
-    host = (id == root ? master : usr.children[id])
+    child_id = get_child_index(master, id)
+    host = (id == root ? master : usr.children[child_id])
     _, ineq_idx = getConstraintTypes(host)
     rowptr, colvals, rownzvals = get_sparse_data(host, master, ineq_idx)
     unsafe_copy!(krowM, vcint(rowptr.-1),    length(ineq_idx)+1)
@@ -77,7 +82,8 @@ end
 function D(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
     id == root && return nothing
     usr = unsafe_pointer_to_objref(user_data)::UserData
-    child = usr.children[id]
+    child_id = get_child_index(usr.master, id)
+    child = usr.children[child_id]
     _, ineq_idx = getConstraintTypes(child)
     rowptr, colvals, rownzvals = get_sparse_data(child, child, ineq_idx)
     unsafe_copy!(krowM, vcint(rowptr.-1),    length(ineq_idx)+1)
@@ -94,7 +100,8 @@ end
 function nnzA(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
     usr = unsafe_pointer_to_objref(user_data)::UserData
     master = usr.master
-    host = (id == root ? master : usr.children[id])
+    child_id = get_child_index(master, id)
+    host = (id == root ? master : usr.children[child_id])
     eq_idx, _ = getConstraintTypes(host)
     _, colvals, _ = get_sparse_data(host, master, eq_idx)
     unsafe_store!(nnz, cint(length(colvals)), 1)
@@ -108,7 +115,8 @@ function nnzB(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
         println("nnzB ($id) = 0")
     else
         usr = unsafe_pointer_to_objref(user_data)::UserData
-        child = usr.children[id]
+        child_id = get_child_index(usr.master, id)
+        child = usr.children[child_id]
         eq_idx, _ = getConstraintTypes(child)
         _, colvals, _ = get_sparse_data(child, child, eq_idx)
         unsafe_store!(nnz, cint(length(colvals)), 1)
@@ -120,7 +128,8 @@ end
 function nnzC(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
     usr = unsafe_pointer_to_objref(user_data)::UserData
     master = usr.master
-    host = (id == root ? master : usr.children[id])
+    child_id = get_child_index(master, id)
+    host = (id == root ? master : usr.children[child_id])
     _, ineq_idx = getConstraintTypes(host)
     _, colvals, _ = get_sparse_data(host, master, ineq_idx)
     unsafe_store!(nnz, cint(length(colvals)), 1)
@@ -134,7 +143,8 @@ function nnzD(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
         println("nnzD ($id) = 0")
     else
         usr = unsafe_pointer_to_objref(user_data)::UserData
-        child = usr.children[id]
+        child_id = get_child_index(usr.master, id)
+        child = usr.children[child_id]
         _, ineq_idx = getConstraintTypes(child)
         _, colvals, _ = get_sparse_data(child, child, ineq_idx)
         unsafe_store!(nnz, cint(length(colvals)), 1)
@@ -145,7 +155,8 @@ end
 
 function b(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
-    host = (id == root ? usr.master : usr.children[id])
+    child_id = get_child_index(usr.master, id)
+    host = (id == root ? usr.master : usr.children[child_id])
     eq_idx, _ = getConstraintTypes(host)
     _, rlb, _ = JuMP.prepProblemBounds(host)
     @assert len == length(eq_idx)
@@ -156,7 +167,8 @@ end
 
 function c(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
-    host = (id == root ? usr.master : usr.children[id])
+    child_id = get_child_index(usr.master, id)
+    host = (id == root ? usr.master : usr.children[child_id])
     f, _, _ = JuMP.prepProblemBounds(host)
     @assert len == length(f)
     unsafe_copy!(vec, pointer(f), len)
@@ -166,7 +178,8 @@ end
 
 function clow(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
-    host = (id == root ? usr.master : usr.children[id])
+    child_id = get_child_index(usr.master, id)
+    host = (id == root ? usr.master : usr.children[child_id])
     _, rlb, _ = JuMP.prepProblemBounds(host)
     _, ineq_idx = getConstraintTypes(host)
     @assert len == length(ineq_idx)
@@ -182,7 +195,8 @@ end
 
 function cupp(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
-    host = (id == root ? usr.master : usr.children[id])
+    child_id = get_child_index(usr.master, id)
+    host = (id == root ? usr.master : usr.children[child_id])
     _, ineq_idx = getConstraintTypes(host)
     _, _, rub = JuMP.prepProblemBounds(host)
     @assert len == length(ineq_idx)
@@ -198,7 +212,8 @@ end
 
 function xlow(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
-    host = (id == root ? usr.master : usr.children[id])
+    child_id = get_child_index(usr.master, id)
+    host = (id == root ? usr.master : usr.children[child_id])
     @assert len == host.numCols
     print("xlow ($id) = [")
     for it in 1:len
@@ -212,7 +227,8 @@ end
 
 function xupp(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
-    host = (id == root ? usr.master : usr.children[id])
+    child_id = get_child_index(usr.master, id)
+    host = (id == root ? usr.master : usr.children[child_id])
     @assert len == host.numCols
     print("xupp ($id) = [")
     for it in 1:len
@@ -226,7 +242,8 @@ end
 
 function iclow(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
-    host = (id == root ? usr.master : usr.children[id])
+    child_id = get_child_index(usr.master, id)
+    host = (id == root ? usr.master : usr.children[child_id])
     _, ineq_idx = getConstraintTypes(host)
     _, rlb, _ = JuMP.prepProblemBounds(host)
     @assert len == length(ineq_idx)
@@ -242,7 +259,8 @@ end
 
 function icupp(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
-    host = (id == root ? usr.master : usr.children[id])
+    child_id = get_child_index(usr.master, id)
+    host = (id == root ? usr.master : usr.children[child_id])
     _, ineq_idx = getConstraintTypes(host)
     _, _, rub = JuMP.prepProblemBounds(host)
     @assert len == length(ineq_idx)
@@ -258,7 +276,8 @@ end
 
 function ixlow(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
-    host = (id == root ? usr.master : usr.children[id])
+    child_id = get_child_index(usr.master, id)
+    host = (id == root ? usr.master : usr.children[child_id])
     @assert len == host.numCols
     print("ixlow ($id) = [")
     for it in 1:len
@@ -272,7 +291,8 @@ end
 
 function ixupp(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
     usr = unsafe_pointer_to_objref(user_data)::UserData
-    host = (id == root ? usr.master : usr.children[id])
+    child_id = get_child_index(usr.master, id)
+    host = (id == root ? usr.master : usr.children[child_id])
     @assert len == host.numCols
     print("ixupp ($id) = [")
     for it in 1:len
