@@ -1,5 +1,5 @@
 try
-    libpips = dlopen("$(ENV["HOME"])PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
+    libpips = dlopen("$(ENV["HOME"])/PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
     PIPSSolve = dlsym(libpips,:PIPSSolve)
 catch
     warn("Cannot load PIPS shared library")
