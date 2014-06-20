@@ -44,7 +44,9 @@ function get_sparse_data(owner::JuMP.Model, interest::JuMP.Model, idx_set::Vecto
     end
 
     colval   = Int[]
+    sizehint(colval, nnz)
     rownzval = Float64[]
+    sizehint(rownzval, nnz)
 
     nnz = 0
     tmprow   = JuMP.IndexedVector(Float64, interest.numCols)
@@ -70,6 +72,8 @@ function get_sparse_data(owner::JuMP.Model, interest::JuMP.Model, idx_set::Vecto
     rowptr[numRows+1] = nnz + 1
 
     mat = SparseMatrixCSC(interest.numCols, numRows, rowptr, colval, rownzval)
+
+    mat = (mat')' # ugly ugly ugly
 
     return mat.colptr, mat.rowval, mat.nzval
 end
