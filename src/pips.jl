@@ -104,7 +104,9 @@ function pips_solve(master::JuMP.Model)
     @assert master.objSense == :Min
 
     children = getchildren(master)
-    child    = children[1]
+
+    passToPIPS = (length(children) == 0)
+    child    = passToPIPS ? master : children[1]
 
     # MPI data
     comm = MPI.COMM_WORLD
@@ -133,7 +135,10 @@ function pips_solve(master::JuMP.Model)
     first_dual    = Array(Cdouble, n_eq_m+n_ineq_m)
     second_dual   = Array(Cdouble, numScens*(n_eq_c+n_ineq_c))
 
-    # num_scenarios(m) == 1 && return
+    if !passToPIPS
+        # TODO: call Q, nnzQ, etc. to precompile
+        return 0.0
+    end
 
     val = @elapsed ccall(PIPSSolve, Void, (Ptr{Cint},  # MPI_COMM
     #val = ccall(("PIPSSolve",libpips), Void, (Ptr{Void},  # MPI_COMM

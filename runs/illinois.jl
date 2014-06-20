@@ -5,7 +5,7 @@ MPI.init()
 myrank = MPI.rank(MPI.COMM_WORLD)
 mysize = MPI.size(MPI.COMM_WORLD)
 
-numScens = convert(Int, ARGS[1])
+numScens = int(ARGS[1])
 
 function solve_illinois(NS::Int)
 
@@ -99,7 +99,6 @@ function solve_illinois(NS::Int)
                    +sum{PgenWin_f[i], i=GENWIN; j==bus_genWin[i]}
                    -sum{loads[i], i=LOAD; j==bus_load[i]} >= 0)
 
-    #for node in NODES
     @second_stage m node begin
         bl = StochasticBlock(m)
         # variables
@@ -148,7 +147,7 @@ function solve_illinois(NS::Int)
 end
 
 # dummy call to compile everything
-_,_ = solve_illinois(1)
+_,_ = solve_illinois(0)
 
 jump_time, pips_time = solve_illinois(numScens)
 if myrank == 0
