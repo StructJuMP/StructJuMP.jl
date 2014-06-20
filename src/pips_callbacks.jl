@@ -1,10 +1,18 @@
 # TODO: cache sparsity information somewhere so we don't have to compute twice
 
+function issorted(colptr::Vector{Int}, rowval::Vector{Int})
+    for i in 1:(length(colptr)-1)
+        issorted(rowval[colptr[i]]:rowval[colptr[i+1]]-1) || return false
+    end
+    return true
+end
+
 function Q(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
     usr = unsafe_pointer_to_objref(user_data)::UserData
     child_id = get_child_index(usr.master, id)
     host = (id == root ? usr.master : usr.children[child_id])
     rowptr, colvals, rownzvals = get_sparse_Q(host)
+    @assert issorted(rowptr, colvals)
     unsafe_copy!(krowM, vcint(rowptr.-1), host.numCols+1)
     unsafe_copy!(jcolM, vcint(colvals.-1), length(colvals))
     unsafe_copy!(M, pointer(rownzvals), length(rownzvals))
@@ -32,6 +40,7 @@ function A(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M
     host = (id == root ? master : usr.children[child_id])
     eq_idx, _ = getConstraintTypes(host)
     rowptr, colvals, rownzvals = get_sparse_data(host, master, eq_idx)
+    @assert issorted(rowptr, colvals)
     unsafe_copy!(krowM, vcint(rowptr.-1),    length(eq_idx)+1)
     unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
     unsafe_copy!(M,     pointer(rownzvals), length(colvals))
@@ -50,6 +59,7 @@ function B(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M
     child = usr.children[child_id]
     eq_idx, _ = getConstraintTypes(child)
     rowptr, colvals, rownzvals = get_sparse_data(child, child, eq_idx)
+    @assert issorted(rowptr, colvals)
     unsafe_copy!(krowM, vcint(rowptr.-1),    length(eq_idx)+1)
     unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
     unsafe_copy!(M,     pointer(rownzvals), length(colvals))
@@ -68,6 +78,7 @@ function C(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M
     host = (id == root ? master : usr.children[child_id])
     _, ineq_idx = getConstraintTypes(host)
     rowptr, colvals, rownzvals = get_sparse_data(host, master, ineq_idx)
+    @assert issorted(rowptr, colvals)
     unsafe_copy!(krowM, vcint(rowptr.-1),    length(ineq_idx)+1)
     unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
     unsafe_copy!(M,     pointer(rownzvals), length(colvals))
@@ -86,6 +97,7 @@ function D(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M
     child = usr.children[child_id]
     _, ineq_idx = getConstraintTypes(child)
     rowptr, colvals, rownzvals = get_sparse_data(child, child, ineq_idx)
+    @assert issorted(rowptr, colvals)
     unsafe_copy!(krowM, vcint(rowptr.-1),    length(ineq_idx)+1)
     unsafe_copy!(jcolM, vcint(colvals.-1),   length(colvals))
     unsafe_copy!(M,     pointer(rownzvals), length(colvals))
