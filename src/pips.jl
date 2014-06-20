@@ -113,12 +113,7 @@ function pips_solve(master::JuMP.Model)
     rank = MPI.rank(comm)
 
     numScens = num_scenarios(master)
-
     scenPerRank = iceil(numScens/size)
-    println("length(children) = $(length(children))")
-    println("num scenarios    = $numScens")
-    println("scens per rank   = $scenPerRank")
-    # @assert (length(children) == numScens == scenPerRank) # while we're running on one proc
 
     user_data = UserData(master, children)
 
@@ -130,13 +125,15 @@ function pips_solve(master::JuMP.Model)
 
     mpi_comm = Cint[comm.fval]
 
-    MPI.barrier(comm)
+    # MPI.barrier(comm)
 
     obj_val = [0.0]
     first_primal  = Array(Cdouble, master.numCols)
     second_primal = Array(Cdouble, numScens*child.numCols)
     first_dual    = Array(Cdouble, n_eq_m+n_ineq_m)
     second_dual   = Array(Cdouble, numScens*(n_eq_c+n_ineq_c))
+
+    # num_scenarios(m) == 1 && return
 
     val = @elapsed ccall(PIPSSolve, Void, (Ptr{Cint},  # MPI_COMM
     #val = ccall(("PIPSSolve",libpips), Void, (Ptr{Void},  # MPI_COMM
