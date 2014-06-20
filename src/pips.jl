@@ -1,5 +1,9 @@
-libpips = dlopen("/home/huchette/PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
-PIPSSolve = dlsym(libpips,:PIPSSolve)
+try
+    libpips = dlopen("$(ENV["HOME"])PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
+    PIPSSolve = dlsym(libpips,:PIPSSolve)
+catch
+    warn("Cannot load PIPS shared library")
+end
 
 type UserData
     master   :: JuMP.Model
