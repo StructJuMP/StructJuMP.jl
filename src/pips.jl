@@ -69,7 +69,9 @@ function get_sparse_data(owner::JuMP.Model, interest::JuMP.Model, idx_set::Vecto
     end
     rowptr[numRows+1] = nnz + 1
 
-    return rowptr, colval, rownzval
+    mat = SparseMatrixCSC(interest.numCols, numRows, rowptr, colval, rownzval)
+
+    return mat.colptr, mat.rowval, mat.nzval
 end
 
 function get_sparse_Q(m::JuMP.Model)
