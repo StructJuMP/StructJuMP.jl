@@ -2,7 +2,7 @@
 
 function issorted(colptr::Vector{Int}, rowval::Vector{Int})
     for i in 1:(length(colptr)-1)
-        issorted(rowval[colptr[i]]:rowval[colptr[i+1]]-1) || return false
+        Base.issorted(rowval[colptr[i]:(colptr[i+1]-1)]) || return false
     end
     return true
 end
