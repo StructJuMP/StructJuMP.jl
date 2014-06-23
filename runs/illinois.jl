@@ -8,7 +8,6 @@ mysize = MPI.size(MPI.COMM_WORLD)
 numScens = int(ARGS[1])
 
 function solve_illinois(NS::Int)
-
     tic()
     SCEN = 1:NS
     NODES = 1:NS
@@ -70,7 +69,7 @@ function solve_illinois(NS::Int)
     df = readtable("$(ENV["HOME"])/.julia/v0.3/StochJuMP/examples/Illinois/IIDmean_2006_06_04_0_0.dat", header=false)
 
     # generate windpower data
-    windPower = Array(Dict{Int,Float64}, NS)
+    windPower = Array(Dict{Int,Float64}, max(NS,1))
     windPower[1] = Dict(GENWIN,df[:x1])
     for s in 2:NS
         windPower[s] = Dict{Int,Float64}()
@@ -105,12 +104,6 @@ function solve_illinois(NS::Int)
         @defVar(bl, 0 <= Pgen[i=GENTHE] <= np_capThe[i])
         @defVar(bl, 0 <= PgenWin[i=GENWIN] <= windPower[node][i])
         @defVar(bl, -lineCutoff*Pmax[i] <= P[i=LIN] <= lineCutoff*Pmax[i])
-
-        # @addConstraint(bl, rampUp[g=GENTHE],
-        #                Pgen[g] - Pgen_f[g] <=  np_capThe[g]/10)
-
-        # @addConstraint(bl, randDown[g=GENTHE],
-        #                Pgen[g] - Pgen_f[g] >= -np_capThe[g]/10)
 
         @addConstraint(bl, rampUpDown[g=GENTHE],
                        -np_capThe[g]/10 <= Pgen[g] - Pgen_f[g] <=  np_capThe[g]/10)

@@ -105,8 +105,8 @@ function pips_solve(master::JuMP.Model)
 
     children = getchildren(master)
 
-    passToPIPS = (length(children) == 0)
-    child    = passToPIPS ? master : children[1]
+    passToPIPS = !(length(children) == 0)
+    child    = passToPIPS ? children[1] : master
 
     # MPI data
     comm = MPI.COMM_WORLD
