@@ -77,7 +77,7 @@ function solve_illinois(NS::Int)
     MPI.Bcast!(gen_cost_the, length(GENTHE), root, comm)
     MPI.Bcast!(gen_cost_win, length(GENWIN), root, comm)
     for s in NS
-        windPower[s,:] = MPI.Bcast!(windPower, length(GENWIN), root, comm)
+        MPI.Bcast!(windPower[s,:], length(GENWIN), root, comm)
     end
     println("rank = $myrank, after bcast")
 
