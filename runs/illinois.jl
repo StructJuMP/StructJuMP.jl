@@ -45,8 +45,6 @@ function solve_illinois(NS::Int)
         line = chomp(readline(fp))
         gen_cost_win = float(split(line, ","))
         windPower = Array(Float64, NS, length(GENWIN))
-        line = chomp(readline(fp))
-        windPower[1,:] = float(split(line, ","))
         for s in 1:NS
             line = chomp(readline(fp))
             windPower[s,:] = float(split(line, ","))
