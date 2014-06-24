@@ -11,7 +11,7 @@ const root = 0
 
 const LIN = 1:2522
 const GENTHE = 1:193
-const GENWIN = 1:870
+const GENWIN = 1:32
 const LOAD = 1:870
 const l_BUS = 1908
 
