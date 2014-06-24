@@ -210,12 +210,6 @@ function pips_solve(master::JuMP.Model)
                                                    first_dual,
                                                    second_dual)
 
-    rank == 0 && println("objective = $obj_val")
-    #println("first stage primal sol  = $first_primal")
-    #println("second stage primal sol = $second_primal")
-    #println("first stage dual sol    = $first_dual")
-    #println("second stage dual sol   = $second_dual")
-
     #MPI.finalize()
     return val
 end
