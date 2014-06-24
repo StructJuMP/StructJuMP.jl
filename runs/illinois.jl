@@ -141,7 +141,7 @@ function solve_illinois(NS::Int)
 end
 
 # dummy call to compile everything
-_,_,_ = solve_illinois(0)
+dummy_time = @elapsed (solve_illinois(0))
 
 data_time, jump_time, pips_time = solve_illinois(numScens)
 if myrank == 0
@@ -149,6 +149,7 @@ if myrank == 0
     println(fp, "number of procs: $mysize")
     println(fp, "number of scens: $numScens")
     println(fp, "module time:     $module_time secs")
+    println(fp, "dummy time:      $dummy_time secs")
     println(fp, "data time:       $data_time secs")
     println(fp, "modeling time:   $jump_time secs")
     println(fp, "solve time:      $pips_time secs")
