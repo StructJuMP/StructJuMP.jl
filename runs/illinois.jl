@@ -76,7 +76,9 @@ function solve_illinois(NS::Int)
     MPI.Bcast!(loads,        length(LOAD),   root, comm)
     MPI.Bcast!(gen_cost_the, length(GENTHE), root, comm)
     MPI.Bcast!(gen_cost_win, length(GENWIN), root, comm)
-    MPI.Bcast!(windPower,    length(GENWIN), root, comm)
+    for s in NS
+        windPower[s,:] = MPI.Bcast!(windPower, length(GENWIN), root, comm)
+    end
 
     # model the thing
     m = StochasticModel(NS)
