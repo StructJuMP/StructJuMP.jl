@@ -35,6 +35,11 @@ println(fp, Pmax_arr[end])
 
 df = readtable("$(ENV["HOME"])/.julia/v0.3/StochJuMP/examples/Illinois/bus_data.tab", separator='\t', skipstart=1)
 BUS     = df[:BUS]
+for i in 1:(length(BUS)-1)
+    print(fp, BUS[i])
+    print(fp, ", ")
+end
+println(fp, BUS[end])
 
 # thermal generators
 df = readtable("$(ENV["HOME"])/.julia/v0.3/StochJuMP/examples/Illinois/Gen_data_thermals.tab", separator='\t', skipstart=1)

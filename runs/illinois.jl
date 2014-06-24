@@ -13,6 +13,7 @@ const LIN = 1:2522
 const GENTHE = 1:193
 const GENWIN = 1:870
 const LOAD = 1:870
+const l_BUS = 1908
 
 const lineCutoff = 1
 
@@ -28,6 +29,8 @@ function solve_illinois(NS::Int)
         rec_bus = int(split(line, ","))
         line = chomp(readline(fp))
         Pmax = float(split(line, ","))
+        line = chomp(readline(fp))
+        BUS = int(split(line, ","))
         line = chomp(readline(fp))
         bus_genThe = int(split(line, ","))
         line = chomp(readline(fp))
@@ -54,6 +57,7 @@ function solve_illinois(NS::Int)
         snd_bus      = Array(Int64,   length(LIN))
         rec_bus      = Array(Int64,   length(LIN))
         Pmax         = Array(Float64, length(LIN))
+        BUS          = Array(Int64,   l_BUS)
         bus_genThe   = Array(Int64,   length(GENTHE))
         np_capThe    = Array(Float64, length(GENTHE))
         bus_genWin   = Array(Int64,   length(GENWIN))
@@ -68,6 +72,7 @@ function solve_illinois(NS::Int)
     MPI.Bcast!(snd_bus,      length(LIN),    root, comm)
     MPI.Bcast!(rec_bus,      length(LIN),    root, comm)
     MPI.Bcast!(Pmax,         length(LIN),    root, comm)
+    MPI.Bcast!(BUS,          l_BUS,          root, comm)
     MPI.Bcast!(bus_genThe,   length(GENTHE), root, comm)
     MPI.Bcast!(np_capThe,    length(GENTHE), root, comm)
     MPI.Bcast!(bus_genWin,   length(GENWIN), root, comm)
