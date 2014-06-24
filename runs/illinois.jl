@@ -19,6 +19,7 @@ const lineCutoff = 1
 function solve_illinois(NS::Int)
     tic()
 
+    println("rank = $myrank, before data")
     if myrank == root
         fp = open("$(ENV["HOME"])/.julia/v0.3/StochJuMP/runs/data.csv", "r")
         line = chomp(readline(fp))
@@ -65,6 +66,7 @@ function solve_illinois(NS::Int)
         gen_cost_win = Array(Float64, length(GENWIN))
         windPower    = Array(Float64, NS, length(GENWIN))
     end
+    println("rank = $myrank, after data")
     MPI.Bcast!(snd_bus,      length(LIN),    root, comm)
     MPI.Bcast!(rec_bus,      length(LIN),    root, comm)
     MPI.Bcast!(Pmax,         length(LIN),    root, comm)
@@ -79,6 +81,7 @@ function solve_illinois(NS::Int)
     for s in NS
         windPower[s,:] = MPI.Bcast!(windPower, length(GENWIN), root, comm)
     end
+    println("rank = $myrank, after bcast")
 
     # model the thing
     m = StochasticModel(NS)
