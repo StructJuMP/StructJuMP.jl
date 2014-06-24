@@ -1,21 +1,21 @@
-function foo()
-    2 + 3
     tic()
     import MPI
-    t1 = toc()
-    tic()
     using JuMP
-    t2 = toc()
-    tic()
-    using JuMPStoch
-    t3 = toc()
+    using StochJuMP
+    t1 = toc()
+
+    MPI.init()
 
     comm = MPI.COMM_WORLD
+    root = 0
+
+    MPI.barrier(comm)
     myrank = MPI.rank(comm)
 
+    tt1 = MPI.Reduce(t1, MPI.MAX, root, comm)
+
     if myrank == 0
-        println("t1 = $t1 sec")
-        println("t2 = $t2 sec")
-        println("t3 = $t3 sec")
+        fp = open("$(ENV["HOME"])/.julia/v0.3/StochJuMP/runs/module_load_results.txt", "w")
+        println(fp, "tt1 = $tt1 sec")
     end
-end
+MPI.finalize()

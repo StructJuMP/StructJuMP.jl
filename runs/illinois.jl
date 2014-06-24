@@ -1,9 +1,12 @@
 tic()
 import MPI
 using JuMP, StochJuMP
-module_time = toc()
 
 MPI.init()
+comm = MPI.COMM_WORLD
+MPI.barrier(comm)
+module_time = toc()
+
 comm = MPI.COMM_WORLD
 myrank = MPI.rank(comm)
 mysize = MPI.size(comm)
@@ -21,6 +24,7 @@ const l_BUS = 1908
 const lineCutoff = 1
 
 function solve_illinois(NS::Int)
+    MPI.barrier(comm)
     tic()
 
     if myrank == root
@@ -85,6 +89,7 @@ function solve_illinois(NS::Int)
     for s in 1:NS
         MPI.Bcast!(windPower[s,:], length(GENWIN), root, comm)
     end
+    MPI.barrier(comm)
     data_time = toc()
     tic()
     # model the thing
@@ -132,10 +137,10 @@ function solve_illinois(NS::Int)
 
         @setObjective(bl, Min, sum{t[g], g=GENTHE} + sum{tw[g], g=GENWIN})
     end
-
-    pips_time = StochJuMP.pips_solve(m)
-    elapsed = toc()
-    jump_time = elapsed - pips_time
+    MPI.barrier(comm)
+    jump_time = toc()
+    m_time, pips_time = StochJuMP.pips_solve(m)
+    jump_time = jump_time + m_time
 
     return data_time, jump_time, pips_time
 end
