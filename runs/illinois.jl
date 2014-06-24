@@ -1,5 +1,7 @@
+tic()
 import MPI
-using JuMP, StochJuMP, DataFrames, Distributions
+using JuMP, StochJuMP
+module_time = toc()
 
 MPI.init()
 comm = MPI.COMM_WORLD
@@ -146,6 +148,7 @@ if myrank == 0
     fp = open("$(ENV["HOME"])/.julia/v0.3/StochJuMP/runs/results/$(filename)", "w")
     println(fp, "number of procs: $mysize")
     println(fp, "number of scens: $numScens")
+    println(fp, "module time:     $module_time secs")
     println(fp, "data time:       $data_time secs")
     println(fp, "modeling time:   $jump_time secs")
     println(fp, "solve time:      $pips_time secs")
