@@ -2,85 +2,81 @@ import MPI
 using JuMP, StochJuMP, DataFrames, Distributions
 
 MPI.init()
-myrank = MPI.rank(MPI.COMM_WORLD)
-mysize = MPI.size(MPI.COMM_WORLD)
+comm = MPI.COMM_WORLD
+myrank = MPI.rank(comm)
+mysize = MPI.size(comm)
 
 numScens = int(ARGS[1])
+const root = 0
+
+const LIN = 1:2522
+const GENTHE = 1:193
+const GENWIN = 1:870
+const LOAD = 1:870
+
+const lineCutoff = 1
 
 function solve_illinois(NS::Int)
     tic()
-    SCEN = 1:NS
-    NODES = 1:NS
-    # lines
-    df = readtable("$(ENV["HOME"])/.julia/v0.3/StochJuMP/examples/Illinois/Lines_data.tab", separator='\t', skipstart=1)
-    LIN          = df[:LIN]
-    snd_bus      = Dict(LIN,df[:snd_bus])
-    rec_bus      = Dict(LIN,df[:rec_bus])
-    Pmax         = Dict(LIN,df[:Pmax])
 
-    # buses
-    df = readtable("$(ENV["HOME"])/.julia/v0.3/StochJuMP/examples/Illinois/bus_data.tab", separator='\t', skipstart=1)
-    BUS     = df[:BUS]
-
-    # thermal generators
-    df = readtable("$(ENV["HOME"])/.julia/v0.3/StochJuMP/examples/Illinois/Gen_data_thermals.tab", separator='\t', skipstart=1)
-    GENTHE       = df[:GENTHE]
-    bus_genThe   = Dict(GENTHE,df[:bus_genThe])
-    np_capThe    = Dict(GENTHE,df[:np_capThe])
-    min_hrateThe = Dict(GENTHE,df[:min_hrateThe])
-    fuelThe      = Dict(GENTHE,df[:fuelThe])
-
-    # wind generators
-    df = readtable("$(ENV["HOME"])/.julia/v0.3/StochJuMP/examples/Illinois/Gen_data_wind.tab", separator='\t', skipstart=1)
-    GENWIN     = df[:GENWIN]
-    bus_genWin = Dict(GENWIN,df[:bus_genWin])
-    np_capWin  = Dict(GENWIN,df[:np_capWin])
-    fuelWin    = Dict(GENWIN,df[:fuelWin])
-
-    # fuels
-    df = readtable("$(ENV["HOME"])/.julia/v0.3/StochJuMP/examples/Illinois/fuel_data_distinctPrices.tab", separator='\t', skipstart=1)
-    FUEL        = df[:FUEL]
-    HV          = Dict(FUEL,df[:HV])
-    Unitprice   = Dict(FUEL,df[:Unitprice])
-
-    # loads
-    df = readtable("$(ENV["HOME"])/.julia/v0.3/StochJuMP/examples/Illinois/load_load.tab", separator='\t', skipstart=1)
-    LOAD     = df[:LOAD]
-    bus_load = Dict(LOAD,df[:bus_load])
-
-    df = readdlm("$(ENV["HOME"])/.julia/v0.3/StochJuMP/examples/Illinois/Loads.dat", '\t')
-    loads = df[3,:]
-    for i in 1:length(loads)
-         loads[i] = (loads[i] > 1000 ? 1000 : 1.2*loads[i])
-    end
-
-    gen_cost_the = Dict{Int,Float64}()
-    for i in GENTHE
-         gen_cost_the[i] = 1e-3*min_hrateThe[i] / HV[fuelThe[i]] * Unitprice[fuelThe[i]]
-    end
-
-    gen_cost_win = Dict{Int,Float64}()
-    for i in GENWIN
-         gen_cost_win[i] = HV[fuelWin[i]]*Unitprice[fuelWin[i]]
-    end
-
-    lineCutoff = 1
-
-    df = readtable("$(ENV["HOME"])/.julia/v0.3/StochJuMP/examples/Illinois/IIDmean_2006_06_04_0_0.dat", header=false)
-
-    # generate windpower data
-    windPower = Array(Dict{Int,Float64}, max(NS,1))
-    windPower[1] = Dict(GENWIN,df[:x1])
-    for s in 2:NS
-        windPower[s] = Dict{Int,Float64}()
-        for gw in GENWIN
-            dist = Normal(windPower[1][gw],0.25*windPower[1][gw])
-            windPower[s][gw] = rand(dist)
+    if myrank == root
+        fp = open("$(ENV["HOME"])/.julia/v0.3/StochJuMP/runs/data.csv", "r")
+        line = readline(fp)
+        snd_bus = int(split(line, ","))
+        line = readline(fp)
+        rec_bus = int(split(line, ","))
+        line = readline(fp)
+        Pmax = float(split(line, ","))
+        line = readline(fp)
+        bus_genThe = int(split(line, ","))
+        line = readline(fp)
+        np_capThe = float(split(line, ","))
+        line = readline(fp)
+        bus_genWin = int(split(line, ","))
+        line = readline(fp)
+        np_capWin = float(split(line, ","))
+        line = readline(fp)
+        bus_load = int(split(line, ","))
+        line = readline(fp)
+        loads = float(split(line, ","))
+        line = readline(fp)
+        gen_cost_the = float(split(line, ","))
+        line = readline(fp)
+        gen_cost_win = float(split(line, ","))
+        windPower = Array(Float64, NS, length(GENWIN))
+        line = readline(fp)
+        windPower[1,:] = float(split(line, ","))
+        for s in 1:NS
+            line = readline(fp)
+            windPower[s,:] = float(split(line, ","))
         end
+        close(fp)
+    else
+        snd_bus      = Array(Int64,   length(LIN))
+        rec_bus      = Array(Int64,   length(LIN))
+        Pmax         = Array(Float64, length(LIN))
+        bus_genThe   = Array(Int64,   length(GENTHE))
+        np_capThe    = Array(Float64, length(GENTHE))
+        bus_genWin   = Array(Int64,   length(GENWIN))
+        np_capWin    = Array(Float64, length(GENWIN))
+        bus_load     = Array(Int64,   length(LOAD))
+        loads        = Array(Float64, length(LOAD))
+        gen_cost_the = Array(Float64, length(GENTHE))
+        gen_cost_win = Array(Float64, length(GENWIN))
+        windPower    = Array(Float64, NS, length(GENWIN))
     end
-    for s in SCEN, gw in GENWIN
-        windPower[s][gw] = min(10*(1+(exp(2*0.7*1.2*windPower[s][gw]-4)-1)/(exp(2*0.7*1.2*windPower[s][gw]-4)+1)),np_capWin[gw])
-    end
+    MPI.Bcast!(snd_bus,      length(LIN),    root, comm)
+    MPI.Bcast!(rec_bus,      length(LIN),    root, comm)
+    MPI.Bcast!(Pmax,         length(LIN),    root, comm)
+    MPI.Bcast!(bus_genThe,   length(GENTHE), root, comm)
+    MPI.Bcast!(np_capThe,    length(GENTHE), root, comm)
+    MPI.Bcast!(bus_genWin,   length(GENWIN), root, comm)
+    MPI.Bcast!(np_capWin,    length(GENWIN), root, comm)
+    MPI.Bcast!(bus_load,     length(LOAD),   root, comm)
+    MPI.Bcast!(loads,        length(LOAD),   root, comm)
+    MPI.Bcast!(gen_cost_the, length(GENTHE), root, comm)
+    MPI.Bcast!(gen_cost_win, length(GENWIN), root, comm)
+    MPI.Bcast!(windPower,    length(GENWIN), root, comm)
 
     # model the thing
     m = StochasticModel(NS)
@@ -106,7 +102,7 @@ function solve_illinois(NS::Int)
         @defVar(bl, -lineCutoff*Pmax[i] <= P[i=LIN] <= lineCutoff*Pmax[i])
 
         @addConstraint(bl, rampUpDown[g=GENTHE],
-                       -np_capThe[g]/10 <= Pgen[g] - Pgen_f[g] <=  np_capThe[g]/10)
+                       -0.1np_capThe[g] <= Pgen[g] - Pgen_f[g] <=  0.1np_capThe[g])
 
         # (spot) power flow equations
         @addConstraint(bl, pfeq[j=BUS],
@@ -118,18 +114,18 @@ function solve_illinois(NS::Int)
         @defVar(bl, t[GENTHE] >= 0)
         @addConstraint(bl, t_con1[g=GENTHE],
                         t[g] >= gen_cost_the[g]*Pgen_f[g] +
-                        1.2*gen_cost_the[g]*(Pgen[g]-Pgen_f[g]))
+                        1.2gen_cost_the[g]*(Pgen[g]-Pgen_f[g]))
         @addConstraint(bl, t_con2[g=GENTHE],
                         t[g] >= gen_cost_the[g]*Pgen_f[g])
 
         @defVar(bl, tw[GENWIN] >= 0)
         @addConstraint(bl, t_w_con1[g=GENWIN],
                         tw[g] >= gen_cost_win[g]*PgenWin_f[g] +
-                        1.2*gen_cost_win[g]*(PgenWin[g]-PgenWin_f[g]))
+                        1.2gen_cost_win[g]*(PgenWin[g]-PgenWin_f[g]))
         @addConstraint(bl, t_w_con2[g=GENWIN],
                         tw[g] >= gen_cost_win[g]*PgenWin_f[g])
 
-        @setObjective(bl, Min, sum{ t[g], g=GENTHE} + sum{tw[g], g=GENWIN})
+        @setObjective(bl, Min, sum{t[g], g=GENTHE} + sum{tw[g], g=GENWIN})
     end
 
     pips_time = StochJuMP.pips_solve(m)
@@ -150,4 +146,3 @@ if myrank == 0
 end
 
 MPI.finalize()
-

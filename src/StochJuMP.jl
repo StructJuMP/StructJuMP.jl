@@ -49,7 +49,7 @@ function StochasticModel(numScen::Int)
 end
 
 StochasticModel(children,parent) = StochasticModel(children,parent,0)
-function StochasticModel(children, parent,nscen)
+function StochasticModel(children, parent, nscen)
     m = JuMP.Model(solver=parent.solver)
     m.ext[:Stochastic] = StochasticData(children, parent, nscen)
     return m
