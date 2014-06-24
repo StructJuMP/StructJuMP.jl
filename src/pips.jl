@@ -100,6 +100,7 @@ end
 include("pips_callbacks.jl")
 
 function pips_solve(master::JuMP.Model)
+    tic()
     @assert getparent(master) == nothing # make sure this is master problem
     @assert master.objSense == :Min
 
@@ -127,20 +128,22 @@ function pips_solve(master::JuMP.Model)
 
     mpi_comm = Cint[comm.fval]
 
-    # MPI.barrier(comm)
-
     obj_val = [0.0]
     first_primal  = Array(Cdouble, master.numCols)
     second_primal = Array(Cdouble, numScens*child.numCols)
     first_dual    = Array(Cdouble, n_eq_m+n_ineq_m)
     second_dual   = Array(Cdouble, numScens*(n_eq_c+n_ineq_c))
 
+    MPI.barrier(comm)
+    t1 = toc()
+
     if !passToPIPS
         # TODO: call Q, nnzQ, etc. to precompile
-        return 0.0
+        return t1, 0.0
     end
 
-    val = @elapsed ccall(PIPSSolve, Void, (Ptr{Cint},  # MPI_COMM
+    tic()
+    ccall(PIPSSolve, Void, (Ptr{Cint},  # MPI_COMM
     #val = ccall(("PIPSSolve",libpips), Void, (Ptr{Void},  # MPI_COMM
                                                    Ptr{Void},
                                                    Cint,       # numScens
@@ -209,7 +212,8 @@ function pips_solve(master::JuMP.Model)
                                                    second_primal,
                                                    first_dual,
                                                    second_dual)
-
+    MPI.barrier(comm)
+    t2 = toc()
     #MPI.finalize()
-    return val
+    return t1, t2
 end
