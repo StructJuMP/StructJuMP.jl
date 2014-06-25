@@ -22,10 +22,10 @@ for (mat_name,sym) in [(:fQ,:Q), (:fA,:A), (:fB,:B), (:fC,:C), (:fD,:D)]
 
 end
 
-for (nnz_name,nnzsym,sym) in [(:fnnzQ,:nnzQ,:Q), 
-                              (:fnnzA,:nnzA,:A), 
-                              (:fnnzB,:nnzB,:B), 
-                              (:fnnzC,:nnzC,:C), 
+for (nnz_name,nnzsym,sym) in [(:fnnzQ,:nnzQ,:Q),
+                              (:fnnzA,:nnzA,:A),
+                              (:fnnzB,:nnzB,:B),
+                              (:fnnzC,:nnzC,:C),
                               (:fnnzD,:nnzD,:D)]
     @eval begin
         function $(nnzsym)(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
@@ -35,7 +35,7 @@ for (nnz_name,nnzsym,sym) in [(:fnnzQ,:nnzQ,:Q),
             return nothing
         end
         $nnz_name =
-            cfunction($old_name, Void, (Ptr{Void},Cint,Ptr{Cint}))
+            cfunction($nnzsym, Void, (Ptr{Void},Cint,Ptr{Cint}))
     end
 end
 
