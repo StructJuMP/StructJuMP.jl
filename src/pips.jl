@@ -128,7 +128,6 @@ function pips_solve(master::JuMP.Model)
     @assert master.objSense == :Min
 
     children = getchildren(master)
-    println("children = $children")
 
     passToPIPS = !(length(children) == 0)
     child    = passToPIPS ? children[1] : master
@@ -216,6 +215,7 @@ function pips_solve(master::JuMP.Model)
         children_probs[ind] = ProblemData(Q,A,B,C,D,b,c,clow,cupp,xlow,xupp,iclow,icupp,ixlow,ixupp)
     end
 
+    gc_disable() # probably very dangerous...
     user_data = UserData(master_prob, children_probs)
 
     obj_val = [0.0]
@@ -229,6 +229,7 @@ function pips_solve(master::JuMP.Model)
 
     if !passToPIPS
         # TODO: call Q, nnzQ, etc. to precompile
+        gc_enable()
         return t1, 0.0
     end
 
@@ -302,6 +303,7 @@ function pips_solve(master::JuMP.Model)
                                                    second_primal,
                                                    first_dual,
                                                    second_dual)
+    gc_enable()
     MPI.barrier(comm)
     t2 = toc()
     #MPI.finalize()

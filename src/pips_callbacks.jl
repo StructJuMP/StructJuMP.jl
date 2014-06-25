@@ -9,16 +9,16 @@ for (sym,nnzsym) in [(:Q,:nnzQ), (:A,:nnzA), (:B,:nnzB), (:C,:nnzC), (:D,:nnzD)]
             unsafe_copy!(krowM, pointer(getfield(host,$(quot(sym))).colptr), length(getfield(host,$(quot(sym))).colptr))
             unsafe_copy!(jcolM, pointer(getfield(host,$(quot(sym))).rowval), length(getfield(host,$(quot(sym))).rowval))
             unsafe_copy!(M, pointer(getfield(host,$(quot(sym))).nzval), length(getfield(host,$(quot(sym))).nzval))
-            println($sym, "($id):")
-            println("rowptr    = ", getfield(host,$(quot(sym))).colptr)
-            println("colvals   = ", getfield(host,$(quot(sym))).rowval)
-            println("rownzvals = ", getfield(host,$(quot(sym))).nzval)
-            println()
+            #println($sym, "($id):")
+            #println("rowptr    = ", getfield(host,$(quot(sym))).colptr)
+            #println("colvals   = ", getfield(host,$(quot(sym))).rowval)
+            #println("rownzvals = ", getfield(host,$(quot(sym))).nzval)
+            #println()
             return nothing
         end
         function $(nnzsym)(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
             usr = unsafe_pointer_to_objref(user_data)::UserData
-            println("id = $id")
+            #println("id = $id")
             host = (id == root ? usr.master : usr.children[id])
             unsafe_store!(nnz, cint(length(getfield(host,$(quot(sym))).rowval)), 1)
             return nothing
@@ -33,7 +33,7 @@ for (sym) in [:b,:c,:clow,:cupp,:xlow,:xupp,:iclow,:icupp,:ixlow,:ixupp]
             host = (id == root ? usr.master : usr.children[id])
             @assert len == length(getfield(host, $(quot(sym))))
             unsafe_copy!(vec, pointer(getfield(host, $(quot(sym)))), len)
-            println($(sym), "($id) = ", getfield(host, $(quot(sym))))
+            #println($(sym), "($id) = ", getfield(host, $(quot(sym))))
             return nothing
         end
     end
