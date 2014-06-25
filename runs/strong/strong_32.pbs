@@ -4,4 +4,4 @@
 #PBS -l walltime=0:40:00
 #PBS -j oe
 cd $PBS_O_WORKDIR
-mpirun -np 32 $HOME/julia/julia $HOME/.julia/v0.3/StochJuMP/runs/illinois.jl 64 32-64.txt
+mpiexec $HOME/julia/julia $HOME/.julia/v0.3/StochJuMP/runs/illinois.jl 64 32-64.txt
