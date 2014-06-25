@@ -1,6 +1,6 @@
 import Base.Meta.quot
 
-for (sym,nnzsym) in [(:Q,:nnzQ), (:A,:nnzA), (:B,:nnzB), (:C,:nnzC), (:D,:nnzD)]
+for (mat_name,sym) in [(:fQ,:Q), (:fA,:A), (:fB,:B), (:fC,:C), (:fD,:D)]
     @eval begin
         function $(sym)(user_data::Ptr{Void}, id::Cint, krowM::Ptr{Cint}, jcolM::Ptr{Cint}, M::Ptr{Cdouble})
             usr = unsafe_pointer_to_objref(user_data)::UserData
@@ -16,17 +16,34 @@ for (sym,nnzsym) in [(:Q,:nnzQ), (:A,:nnzA), (:B,:nnzB), (:C,:nnzC), (:D,:nnzD)]
             #println()
             return nothing
         end
+        $mat_name =
+            cfunction($sym, Void, (Ptr{Void},Cint,Ptr{Cint},Ptr{Cint},Ptr{Cdouble}))
+    end
+
+end
+
+for (nnz_name,nnzsym,sym) in [(:fnnzQ,:nnzQ,:Q), 
+                              (:fnnzA,:nnzA,:A), 
+                              (:fnnzB,:nnzB,:B), 
+                              (:fnnzC,:nnzC,:C), 
+                              (:fnnzD,:nnzD,:D)]
+    @eval begin
         function $(nnzsym)(user_data::Ptr{Void}, id::Cint, nnz::Ptr{Cint})
             usr = unsafe_pointer_to_objref(user_data)::UserData
-            #println("id = $id")
             host = (id == root ? usr.master : usr.children[id])
             unsafe_store!(nnz, cint(length(getfield(host,$(quot(sym))).rowval)), 1)
             return nothing
         end
+        $nnz_name =
+            cfunction($old_name, Void, (Ptr{Void},Cint,Ptr{Cint}))
     end
 end
 
-for (sym) in [:b,:c,:clow,:cupp,:xlow,:xupp,:iclow,:icupp,:ixlow,:ixupp]
+for (vec_name,sym) in [(:fb,:b), (:fc,:c),
+                            (:fclow,:clow), (:fcupp,:cupp),
+                            (:fxlow,:xlow), (:fxupp,:xupp),
+                            (:ficlow,:iclow), (:ficupp,:icupp),
+                            (:fixlow,:ixlow), (:fixupp,:ixupp)]
     @eval begin
         function $(sym)(user_data::Ptr{Void}, id::Cint, vec::Ptr{Cdouble}, len::Cint)
             usr = unsafe_pointer_to_objref(user_data)::UserData
@@ -36,24 +53,7 @@ for (sym) in [:b,:c,:clow,:cupp,:xlow,:xupp,:iclow,:icupp,:ixlow,:ixupp]
             #println($(sym), "($id) = ", getfield(host, $(quot(sym))))
             return nothing
         end
+        $vec_name =
+            cfunction($sym, Void, (Ptr{Void},Cint,Ptr{Cdouble},Cint))
     end
-end
-
-for (mat_name,old_name) in [(:fQ,:Q), (:fA,:A), (:fB,:B), (:fC,:C), (:fD,:D)]
-    @eval $mat_name =
-            cfunction($old_name, Void, (Ptr{Void},Cint,Ptr{Cint},Ptr{Cint},Ptr{Cdouble}))
-end
-
-for (nnz_name,old_name) in [(:fnnzQ,:nnzQ), (:fnnzA,:nnzA), (:fnnzB,:nnzB), (:fnnzC,:nnzC), (:fnnzD,:nnzD)]
-    @eval $nnz_name =
-            cfunction($old_name, Void, (Ptr{Void},Cint,Ptr{Cint}))
-end
-
-for (vec_name,old_name) in [(:fb,:b), (:fc,:c),
-                            (:fclow,:clow), (:fcupp,:cupp),
-                            (:fxlow,:xlow), (:fxupp,:xupp),
-                            (:ficlow,:iclow), (:ficupp,:icupp),
-                            (:fixlow,:ixlow), (:fixupp,:ixupp)]
-    @eval $vec_name =
-        cfunction($old_name, Void, (Ptr{Void},Cint,Ptr{Cdouble},Cint))
 end
