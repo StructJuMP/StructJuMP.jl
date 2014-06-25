@@ -2,9 +2,29 @@ libpips = dlopen("$(ENV["HOME"])/PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
 PIPSSolve = dlsym(libpips,:PIPSSolve)
 
 type UserData
-    master   :: JuMP.Model
-    children :: Vector{JuMP.Model}
+    master   :: ProblemData
+    children :: Vector{ProblemData}
 end
+
+type ProblemData
+    Q :: SparseMatrixCSC
+    A :: SparseMatrixCSC
+    B :: SparseMatrixCSC
+    C :: SparseMatrixCSC
+    D :: SparseMatrixCSC
+    b :: Vector{Cdouble}
+    c :: Vector{Cdouble}
+    clow :: Vector{Cdouble}
+    cupp :: Vector{Cdouble}
+    xlow :: Vector{Cdouble}
+    xupp :: Vector{Cdouble}
+    iclow :: Vector{Cdouble}
+    icupp :: Vector{Cdouble}
+    ixlow :: Vector{Cdouble}
+    ixupp :: Vector{Cdouble}
+end
+
+convert(Ptr{Void}, x::UserData) = x
 
 const root = 0
 
@@ -71,11 +91,9 @@ function get_sparse_data(owner::JuMP.Model, interest::JuMP.Model, idx_set::Vecto
     end
     rowptr[numRows+1] = nnz + 1
 
-    mat = SparseMatrixCSC(interest.numCols, numRows, rowptr, colval, rownzval)
-
+    mat = SparseMatrixCSC(interest.numCols, numRows, vcint(rowptr), vcint(colval), rownzval)
     mat = (mat')' # ugly ugly ugly
-
-    return mat.colptr, mat.rowval, mat.nzval
+    return mat
 end
 
 function get_sparse_Q(m::JuMP.Model)
@@ -91,10 +109,10 @@ function get_sparse_Q(m::JuMP.Model)
             vars1[i], vars2[i] = vars2[i], vars1[i]
         end
     end
-    Q = sparse(vars1, vars2, coeff_copy, n, n)
+    Q = sparse(vcint(vars1), vcint(vars2), coeff_copy, n, n)
     istriu(Q) && (Q = Q')
     @assert istril(Q)
-    return Q.colptr, Q.rowval, Q.nzval
+    return Q
 end
 
 include("pips_callbacks.jl")
@@ -118,15 +136,72 @@ function pips_solve(master::JuMP.Model)
     numScens = num_scenarios(master)
     scenPerRank = iceil(numScens/size)
 
-    user_data = UserData(master, children)
-
     eq_idx_m, ineq_idx_m = getConstraintTypes(master)
     eq_idx_c, ineq_idx_c = getConstraintTypes(child) # should probably check this is const across children
 
     n_eq_m, n_ineq_m = length(eq_idx_m), length(ineq_idx_m)
     n_eq_c, n_ineq_c = length(eq_idx_c), length(ineq_idx_c)
 
-    mpi_comm = Cint[comm.fval]
+    f, rlb, rub = JuMP.prepProblemBounds(master)
+    Q = get_sparse_Q(master)
+    A = get_sparse_data(master, master, eq_idx)
+    B = SparseMatrixCSC(n_eq_m, master.numCols, fill(cint(1),m_eq_m+1),Cint[],Cdouble[])
+    C = get_sparse_data(master, master, ineq_idx)
+    D = SparseMatrixCSC(n_ineq_m, master.numCols, fill(cint(1),m_ineq_m+1),Cint[],Cdouble[])
+    b = vcint(rlb[eq_idx])
+    c = vcint(f)
+    clow = vcint(rlb[ineq_idx])
+    cupp = vcint(rub[ineq_idx])
+    iclow = Array(Cdouble, n_ineq_m)
+    icupp = Array(Cdouble, n_ineq_m)
+    for (it,val) in enumerate(ineq_idx)
+        clow[it] = (isinf(rlb[val]) ? 0.0 : 1.0) 
+        cupp[it] = (isinf(rub[val]) ? 0.0 : 1.0) 
+    end
+    xlow = Array(Cdouble, master.numCols)
+    xupp = Array(Cdouble, master.numCols)
+    ixlow = Array(Cdouble, master.numCols)
+    ixupp = Array(Cdouble, master.numCols)
+    for i in 1:master.numCols
+        xlow[i] = (isinf(master.colLower[it]) ? 0.0 : master.colLower[it])
+        xupp[i] = (isinf(master.colUpper[it]) ? 0.0 : master.colUpper[it])
+        ixlow[i] = (isinf(master.colLower[it]) ? 0.0 : 1.0)
+        ixupp[i] = (isinf(master.colUpper[it]) ? 0.0 : 1.0)
+    end
+    master_prob = ProblemData(Q,A,B,C,D,b,c,d,clow,cupp,xlow,xupp,iclow,icupp,ixlow,ixupp)
+
+    children_probs = Array(ProblemData, length(children))
+    for (it,child) in enumerate(children)
+        f, rlb, rub = JuMP.prepProblemBounds(child)
+        Q = get_sparse_Q(child)
+        A = get_sparse_data(child, master, eq_idx)
+        B = get_sparse_data(child, child, eq_idx)
+        C = get_sparse_data(child, master, ineq_idx)
+        D = get_sparse_data(child, child, ineq_idx)
+        b = vcint(rlb[eq_idx])
+        c = vcint(f)
+        clow = vcint(rlb[ineq_idx])
+        cupp = vcint(rub[ineq_idx])
+        iclow = Array(Cdouble, n_ineq_m)
+        icupp = Array(Cdouble, n_ineq_m)
+        for (it,val) in enumerate(ineq_idx)
+            clow[it] = (isinf(rlb[val]) ? 0.0 : 1.0) 
+            cupp[it] = (isinf(rub[val]) ? 0.0 : 1.0) 
+        end
+        xlow = Array(Cdouble, child.numCols)
+        xupp = Array(Cdouble, child.numCols)
+        ixlow = Array(Cdouble, child.numCols)
+        ixupp = Array(Cdouble, child.numCols)
+        for i in 1:child.numCols
+            xlow[i] = (isinf(child.colLower[it]) ? 0.0 : child.colLower[it])
+            xupp[i] = (isinf(child.colUpper[it]) ? 0.0 : child.colUpper[it])
+            ixlow[i] = (isinf(child.colLower[it]) ? 0.0 : 1.0)
+            ixupp[i] = (isinf(child.colUpper[it]) ? 0.0 : 1.0)
+        end
+        children_probs[it] = ProblemData(Q,A,B,C,D,b,c,d,clow,cupp,xlow,xupp,iclow,icupp,ixlow,ixupp)
+    end
+
+    user_data = UserData(master_prob, children_probs)
 
     obj_val = [0.0]
     first_primal  = Array(Cdouble, master.numCols)
@@ -179,7 +254,8 @@ function pips_solve(master::JuMP.Model)
                                                    Ptr{Cdouble}, # first-stage dual
                                                    Ptr{Cdouble}), #second-stage dual
                                                    Cint[root],
-                                                   pointer_from_objref(user_data),
+                                                   # pointer_from_objref(user_data),
+                                                   convert(user_data),
                                                    cint(numScens),
                                                    cint(master.numCols),
                                                    cint(n_eq_m),
