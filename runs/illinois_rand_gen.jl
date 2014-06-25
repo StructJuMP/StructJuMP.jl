@@ -86,7 +86,15 @@ function solve_illinois(NS::Int)
         MPI.Bcast!(windPower[1,:], length(GENWIN), root, comm)
         MPI.barrier(comm)
 
-        for s in 2:NS
+        scenPerRank = iceil(numScens/mysize)
+        if myrank == root
+            local_scens = 2:scenPerRank
+        elseif myrank == mysize
+            local_scens = rank*scenPerRank + (1:scenPerRank)
+        else
+            local_scens = (myrank*scenPerRank+1):numScens
+        end
+        for s in local_scens # only populate local scenario wind data
             for gw in GENWIN
                 windPower[s,gw] = windPower[1,gw] + 0.25windPower[1,gw]*randn()
             end
