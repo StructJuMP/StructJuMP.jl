@@ -52,9 +52,11 @@ function solve_illinois(NS::Int)
             gen_cost_the = float(split(line, ","))
             line = chomp(readline(fp))
             gen_cost_win = float(split(line, ","))
-            windPower = Array(Float64, max(NS,1), length(GENWIN))
-            line = chomp(readline(fp))
-            windPower[1,:] = float(split(line, ","))
+            windPower = Array(Float64, NS, length(GENWIN))
+            for s in 1:NS
+                line = chomp(readline(fp))
+                windPower[s,:] = float(split(line, ","))
+            end
             close(fp)
         else
             snd_bus      = Array(Int64,   length(LIN))
@@ -69,7 +71,7 @@ function solve_illinois(NS::Int)
             loads        = Array(Float64, length(LOAD))
             gen_cost_the = Array(Float64, length(GENTHE))
             gen_cost_win = Array(Float64, length(GENWIN))
-            windPower    = Array(Float64, max(NS,1), length(GENWIN))
+            windPower    = Array(Float64, NS, length(GENWIN))
         end
         MPI.Bcast!(snd_bus,      length(LIN),    root, comm)
         MPI.Bcast!(rec_bus,      length(LIN),    root, comm)
@@ -83,27 +85,10 @@ function solve_illinois(NS::Int)
         MPI.Bcast!(loads,        length(LOAD),   root, comm)
         MPI.Bcast!(gen_cost_the, length(GENTHE), root, comm)
         MPI.Bcast!(gen_cost_win, length(GENWIN), root, comm)
-        MPI.Bcast!(windPower[1,:], length(GENWIN), root, comm)
+        for s in 1:NS
+            MPI.Bcast!(windPower[s,:], length(GENWIN), root, comm)
+        end
         MPI.barrier(comm)
-
-        scenPerRank = iceil(NS/mysize)
-        if myrank == root
-            local_scens = 2:scenPerRank
-        elseif myrank == mysize
-            local_scens = myrank*scenPerRank + (1:scenPerRank)
-        else
-            local_scens = (myrank*scenPerRank+1):NS
-        end
-        println("local_scens = $local_scens")
-        println("windPower size = $(size(windPower))")
-        for s in local_scens # only populate local scenario wind data
-            for gw in GENWIN
-                windPower[s,gw] = windPower[1,gw] + 0.25windPower[1,gw]*randn()
-            end
-        end
-        for s in [1,local_scens], gw in GENWIN
-            windPower[s,gw] = min(10*(1+(exp(2*0.7*1.2*windPower[s,gw]-4)-1)/(exp(2*0.7*1.2*windPower[s,gw]-4)+1)),np_capWin[gw])
-        end
     end
     jump_time = @elapsed begin
         # model the thing
