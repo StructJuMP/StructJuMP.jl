@@ -3,15 +3,14 @@ using StochJuMP, JuMP
 
 MPI.init()
 
-m = StochasticModel()
+numScen = 2
+m = StochasticModel(numScen)
 
 @defVar(m, 0 <= x <= 1)
 @defVar(m, 0 <= y <= 1)
 
 @addConstraint(m, x + y == 1)
 setObjective(m, :Min, x*x + y)
-
-numScen = 2
 
 for i in 1:numScen
     bl = StochasticBlock(m)
