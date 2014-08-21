@@ -1,4 +1,6 @@
-libpips = dlopen("$(ENV["HOME"])/PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
+#libpips = dlopen("$(ENV["HOME"])/PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
+libpips = dlopen("$(ENV["HOME"])/PIPS-new/build/PIPS-IPM/libpipsipm-shared.so")
+#libpips = dlopen("$(ENV["HOME"])/libpipsipm-shared.so")
 PIPSSolve = dlsym(libpips,:PIPSSolve)
 
 type ProblemData
@@ -226,6 +228,7 @@ function pips_solve(master::JuMP.Model)
 
     MPI.barrier(comm)
     t1 = toc()
+    rank == 0 && println("jump time #2: $t1 secs")
 
     if !passToPIPS
         # TODO: call Q, nnzQ, etc. to precompile

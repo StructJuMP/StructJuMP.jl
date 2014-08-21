@@ -94,8 +94,6 @@ function solve_illinois(NS::Int)
         else
             local_scens = (myrank*scenPerRank+1):NS
         end
-        println("local_scens = $local_scens")
-        println("windPower size = $(size(windPower))")
         for s in local_scens # only populate local scenario wind data
             for gw in GENWIN
                 windPower[s,gw] = windPower[1,gw] + 0.25windPower[1,gw]*randn()
@@ -104,7 +102,9 @@ function solve_illinois(NS::Int)
         for s in [1,local_scens], gw in GENWIN
             windPower[s,gw] = min(10*(1+(exp(2*0.7*1.2*windPower[s,gw]-4)-1)/(exp(2*0.7*1.2*windPower[s,gw]-4)+1)),np_capWin[gw])
         end
+        MPI.barrier(comm)
     end
+    myrank == 0 && println("data time: $data_time secs")
     jump_time = @elapsed begin
         # model the thing
         m = StochasticModel(NS)
@@ -153,6 +153,7 @@ function solve_illinois(NS::Int)
         end
         MPI.barrier(comm)
     end
+    myrank == 0 && println("jump time #1: $jump_time secs")
     m_time, pips_time = StochJuMP.pips_solve(m)
     jump_time = jump_time + m_time
 
@@ -164,7 +165,7 @@ dummy_time = @elapsed (solve_illinois(0))
 
 data_time, jump_time, pips_time = solve_illinois(numScens)
 if myrank == 0
-    fp = open("$(ENV["HOME"])/.julia/v0.3/StochJuMP/runs/results/$(filename)", "w")
+    fp = open("$(ENV["HOME"])/.julia/v0.3/StochJuMP/runs/weak_results/$(filename)", "w")
     println(fp, "number of procs: $mysize")
     println(fp, "number of scens: $numScens")
     println(fp, "module time:     $module_time secs")
