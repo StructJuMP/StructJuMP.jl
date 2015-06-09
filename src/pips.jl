@@ -1,6 +1,6 @@
-#libpips = dlopen("$(ENV["HOME"])/PIPS/PIPS/build/PIPS-IPM/libpipsipm-shared.so")
-libpips = dlopen("$(ENV["HOME"])/PIPS-new/build/PIPS-IPM/libpipsipm-shared.so")
-#libpips = dlopen("$(ENV["HOME"])/libpipsipm-shared.so")
+# This should not specify the file extension, because MacOSX has *.dylib.
+# The library path should be specified in LD_LIBRARY_PATH or DYLD_LIBRARY_PATH.
+libpips = dlopen("libpipsipm-shared")
 PIPSSolve = dlsym(libpips,:PIPSSolve)
 
 type ProblemData
@@ -137,8 +137,8 @@ function pips_solve(master::JuMP.Model)
     # MPI data
     comm = MPI.COMM_WORLD
 
-    size = MPI.size(comm)
-    rank = MPI.rank(comm)
+    size = MPI.Comm_size(comm)
+    rank = MPI.Comm_rank(comm)
 
     numScens = num_scenarios(master)
     scenPerRank = iceil(numScens/size)
@@ -226,7 +226,7 @@ function pips_solve(master::JuMP.Model)
     first_dual    = Array(Cdouble, n_eq_m+n_ineq_m)
     second_dual   = Array(Cdouble, numScens*(n_eq_c+n_ineq_c))
 
-    MPI.barrier(comm)
+    MPI.Barrier(comm)
     t1 = toc()
     rank == 0 && println("jump time #2: $t1 secs")
 
@@ -307,7 +307,7 @@ function pips_solve(master::JuMP.Model)
                                                    first_dual,
                                                    second_dual)
     gc_enable()
-    MPI.barrier(comm)
+    MPI.Barrier(comm)
     t2 = toc()
     #MPI.finalize()
     return t1, t2

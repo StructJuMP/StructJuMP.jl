@@ -1,9 +1,7 @@
 module StochJuMP
 
-import MPI # think this needs to go first for MPI to work properly...
-
-import JuMP
-
+import MPI
+using JuMP # To reexport, should be using (not import)
 import MathProgBase
 import MathProgBase.MathProgSolverInterface
 
@@ -33,14 +31,31 @@ export
     @defConstrRef, @setObjective, addToExpression,
     @setNLObjective, @addNLConstraint, @gendict
 
+
+# --------------
+# StochasticData
+# --------------
+
+# Teyp Define
 type StochasticData
+    probability::Vector{Number}
     children::Vector{JuMP.Model}
     parent
     num_scen::Int
 end
 
-StochasticData() = StochasticData(JuMP.Model[],nothing,0)
+# Constructor with no argument
+StochasticData() = StochasticData(Number[], JuMP.Model[], nothing, 0)
 
+# Constructor without specifyng probabilities
+StochasticData(children, parent, nscen) = StochasticData(Number[], children, parent, nscen)
+
+
+# ---------------
+# StochasticModel
+# ---------------
+
+# Constructor with the number of scenarios
 function StochasticModel(numScen::Int)
     # MPI.init()
     m = JuMP.Model()
@@ -48,12 +63,19 @@ function StochasticModel(numScen::Int)
     return m
 end
 
+# Constructor with children and partent models
 StochasticModel(children,parent) = StochasticModel(children,parent,0)
 function StochasticModel(children, parent, nscen)
     m = JuMP.Model(solver=parent.solver)
     m.ext[:Stochastic] = StochasticData(children, parent, nscen)
+    m.ext[:Skip] = false; # to indicate whether the scenario model is skipped to load
     return m
 end
+
+
+# -------------
+# Get functions
+# -------------
 
 function getStochastic(m::JuMP.Model)
     if haskey(m.ext, :Stochastic)
@@ -63,14 +85,26 @@ function getStochastic(m::JuMP.Model)
     end
 end
 
-getparent(m::JuMP.Model)     = getStochastic(m).parent
-getchildren(m::JuMP.Model)   = getStochastic(m).children
-num_scenarios(m::JuMP.Model) = getStochastic(m).num_scen
+getparent(m::JuMP.Model)      = getStochastic(m).parent
+getchildren(m::JuMP.Model)    = getStochastic(m).children
+getprobability(m::JuMP.Model) = getStochastic(m).probability
+num_scenarios(m::JuMP.Model)  = getStochastic(m).num_scen
 
-function StochasticBlock(m::JuMP.Model)
+
+# ---------------
+# StochasticBlock
+# ---------------
+
+# Constructor without probability
+StochasticBlock(m::JuMP.Model) = StochasticBlock(m::JuMP.Model, 1.0 / num_scenarios(m))
+
+# Construcor with probability
+function StochasticBlock(m::JuMP.Model, probability::Number)
     stoch = getStochastic(m)
+    #stoch.parent = m
     ch = StochasticModel(JuMP.Model[], m)
     push!(stoch.children, ch)
+    push!(stoch.probability, probability)
     return ch
 end
 
@@ -91,7 +125,5 @@ macro second_stage(m,ind,code)
         end
     end
 end
-
-include("pips.jl")
 
 end
