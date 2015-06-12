@@ -111,8 +111,8 @@ macro second_stage(m,ind,code)
     return quote
         numScens = num_scenarios($(esc(m)))
         comm = MPI.COMM_WORLD
-        mysize = MPI.size(comm)
-        myrank = MPI.rank(comm)
+        mysize = MPI.Comm_size(comm)
+        myrank = MPI.Comm_rank(comm)
         # numScens < size && error("Fewer scenarios than processes")
         scenPerRank = iceil(numScens/mysize)
         proc_idx_set = myrank*scenPerRank + (1:scenPerRank)
