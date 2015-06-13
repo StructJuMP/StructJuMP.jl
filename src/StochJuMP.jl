@@ -94,11 +94,10 @@ function getProcIdxSet(m::JuMP.Model)
     comm = MPI.COMM_WORLD
     mysize = MPI.Comm_size(comm)
     myrank = MPI.Comm_rank(comm)
-    # numScens < size && error("Fewer scenarios than processes")
-    scenPerRank = iceil(numScens/mysize)
-    proc_idx_set = myrank*scenPerRank + (1:scenPerRank)
-    if proc_idx_set.stop > numScens # handle case where numScens is not a multiple of size
-        proc_idx_set = start(proc_idx_set):numScens
+    # Why don't we just take a round-and-robin?
+    proc_idx_set = Int[];
+    for s = myrank:mysize:(numScen-1)
+        push!(proc_idx_set, s+1);
     end
     return proc_idx_set;
 end
