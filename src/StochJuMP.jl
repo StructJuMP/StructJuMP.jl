@@ -5,7 +5,7 @@ using JuMP # To reexport, should be using (not import)
 import MathProgBase
 import MathProgBase.MathProgSolverInterface
 
-export StochasticModel, getStochastic, getparent, getchildren, 
+export StochasticModel, getStochastic, getparent, getchildren, getProcIdxSet,
        num_scenarios, StochasticBlock, @second_stage
 
 #############################################################################
@@ -89,6 +89,19 @@ getchildren(m::JuMP.Model)    = getStochastic(m).children
 getprobability(m::JuMP.Model) = getStochastic(m).probability
 num_scenarios(m::JuMP.Model)  = getStochastic(m).num_scen
 
+function getProcIdxSet(m::JuMP.Model)
+    numScens = num_scenarios(m)
+    comm = MPI.COMM_WORLD
+    mysize = MPI.Comm_size(comm)
+    myrank = MPI.Comm_rank(comm)
+    # numScens < size && error("Fewer scenarios than processes")
+    scenPerRank = iceil(numScens/mysize)
+    proc_idx_set = myrank*scenPerRank + (1:scenPerRank)
+    if proc_idx_set.stop > numScens # handle case where numScens is not a multiple of size
+        proc_idx_set = start(proc_idx_set):numScens
+    end
+    return proc_idx_set;
+end
 
 # ---------------
 # StochasticBlock
@@ -109,16 +122,7 @@ end
 
 macro second_stage(m,ind,code)
     return quote
-        numScens = num_scenarios($(esc(m)))
-        comm = MPI.COMM_WORLD
-        mysize = MPI.Comm_size(comm)
-        myrank = MPI.Comm_rank(comm)
-        # numScens < size && error("Fewer scenarios than processes")
-        scenPerRank = iceil(numScens/mysize)
-        proc_idx_set = myrank*scenPerRank + (1:scenPerRank)
-        if proc_idx_set.stop > numScens # handle case where numScens is not a multiple of size
-            proc_idx_set = start(proc_idx_set):numScens
-        end
+        proc_idx_set = getProcIdxSet($(esc(m)))
         for $(esc(ind)) in proc_idx_set
             $(esc(code))
         end
