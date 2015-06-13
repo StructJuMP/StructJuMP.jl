@@ -96,7 +96,7 @@ function getProcIdxSet(m::JuMP.Model)
     myrank = MPI.Comm_rank(comm)
     # Why don't we just take a round-and-robin?
     proc_idx_set = Int[];
-    for s = myrank:mysize:(numScen-1)
+    for s = myrank:mysize:(numScens-1)
         push!(proc_idx_set, s+1);
     end
     return proc_idx_set;
