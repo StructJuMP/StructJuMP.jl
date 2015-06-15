@@ -89,8 +89,7 @@ getchildren(m::JuMP.Model)    = getStochastic(m).children
 getprobability(m::JuMP.Model) = getStochastic(m).probability
 num_scenarios(m::JuMP.Model)  = getStochastic(m).num_scen
 
-function getProcIdxSet(m::JuMP.Model)
-    numScens = num_scenarios(m)
+function getProcIdxSet(numScens::Integer)
     comm = MPI.COMM_WORLD
     mysize = MPI.Comm_size(comm)
     myrank = MPI.Comm_rank(comm)
@@ -100,6 +99,11 @@ function getProcIdxSet(m::JuMP.Model)
         push!(proc_idx_set, s+1);
     end
     return proc_idx_set;
+end
+
+function getProcIdxSet(m::JuMP.Model)
+    numScens = num_scenarios(m)
+    return getProcIdxSet(numScens);
 end
 
 # ---------------
