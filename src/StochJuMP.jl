@@ -90,9 +90,13 @@ getprobability(m::JuMP.Model) = getStochastic(m).probability
 num_scenarios(m::JuMP.Model)  = getStochastic(m).num_scen
 
 function getProcIdxSet(numScens::Integer)
-    comm = MPI.COMM_WORLD
-    mysize = MPI.Comm_size(comm)
-    myrank = MPI.Comm_rank(comm)
+    mysize = 1;
+    myrank = 0;
+    if isdefined(:MPI) == true && MPI.Initialized() == true
+        comm = MPI.COMM_WORLD
+        mysize = MPI.Comm_size(comm)
+        myrank = MPI.Comm_rank(comm)
+    end
     # Why don't we just take a round-and-robin?
     proc_idx_set = Int[];
     for s = myrank:mysize:(numScens-1)
