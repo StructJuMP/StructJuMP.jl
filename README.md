@@ -1,0 +1,2 @@
+# StochJuMP.jl
+The StochJuMP.jl package provides a scalable algebraic modeling framework for stochastic programming problems in Julia. StochJuMP.jl is an extension of the [JuMP.jl](https://github.com/JuliaOpt/JuMP.jl) package, which is as fast as [AMPL](http://ampl.com) and faster than any other modeling tools such as [GAMS](http://www.gams.com) and [Pyomo](http://www.pyomo.org) (see [this](http://arxiv.org/pdf/1312.1431.pdf)).
