@@ -1,5 +1,4 @@
-import MPI
-using JuMP, StochJuMP, DataFrames, Distributions
+using StochJuMP
 
 N = 1000
 numScen = 1
@@ -15,7 +14,3 @@ bl = StochasticBlock(m)
 @addConstraint(bl, constr[r=2:(N-1)], x[r] + x[r-1] + y[r] + y[r+1] >= 0)
 @setObjective(bl, Min, sum{y[i], i=1:N})
 
-StochJuMP.pips_solve(m)
-
-# print(m)
-# solve(m)
