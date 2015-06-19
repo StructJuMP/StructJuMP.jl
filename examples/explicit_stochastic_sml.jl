@@ -1,3 +1,5 @@
+using StochJuMP
+
 m = StochasticModel()
 
 @defStochasticVar(m, xh0[ASSETS] >= 0)
@@ -34,8 +36,6 @@ for n1 in NODES
 end
 
 @addConstraint(m, sum{Prob[n1]*Prob[n2]*wealth[(n1,n2)], n1=NODES, n2=NODES; PARENT[n1]==0 && PARENT[n2]==n1})
-
-solve(m)
 
 # things of note:
 # Block(parent::Union(Model,Block), index) constructor

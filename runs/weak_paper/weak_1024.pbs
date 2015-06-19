@@ -1,6 +1,0 @@
-#!/bin/sh
-#PBS -N huchette
-#PBS -l nodes=64:ppn=16
-#PBS -l walltime=1:00:00
-#PBS -j oe
-mpiexec $HOME/julia/julia $HOME/.julia/v0.3/StochJuMP/runs/illinois.jl 1024 1024-1024.txt

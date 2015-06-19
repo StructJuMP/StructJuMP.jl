@@ -1,3 +1,5 @@
+using StochJuMP
+
 m = StochasticModel()
 
 @defStochasticVar(m, xh[ASSETS] >= 0)

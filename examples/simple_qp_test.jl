@@ -1,7 +1,4 @@
-import MPI # put this first!
-using StochJuMP, JuMP
-
-MPI.init()
+using StochJuMP
 
 m = StochasticModel()
 
@@ -23,4 +20,3 @@ for i in 1:numScen
     setObjective(bl, :Min, w[5] - w[1]*w[1] + 2w[2]*w[3])
 end
 
-StochJuMP.pips_solve(m)
