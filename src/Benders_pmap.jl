@@ -1,0 +1,170 @@
+#================================================================
+ This package solves the following problem parallely
+
+ min  c_0^T x + \sum{i = 1}^S c_i^Ty_i
+ s.t. b_0 - A_0 x           \in K_0,
+      b_i - A_i x - B_i y_i \in K_i, \forall i = 1,...,S
+                x           \in C_0,
+                x_I         \in Z 
+                        y_i \in C_i, \forall i = 1,...,S
+
+ where input to the Benders engine is:
+ c_all is an array of c_0, c_1, c_2, ... , c_S objective coefficients
+ A_all is an array of A_0, A_1, A_2, ... , A_S constraint matrices of master variables
+ B_all is an array of      B_1, B_2, ... , B_S constraint matrices of scenario variables (note that scenario variables do not appear at master constraints)
+ b_all is an array of b_0, b_1, b_2, ... , b_S right hand side of constraints
+ K_all is an array of K_0, K_1, K_2, ... , K_S constraint cones
+ C_all is an array of C_0, C_1, C_2, ... , C_S variable cones
+ v     is an array of master variable types (i.e. :Bin, :Int, :Cont)
+
+ call with: julia -p <num_threads> <myscript>
+================================================================#
+@everywhere using JuMP
+
+@everywhere begin
+
+# this function loads and solves a conic problem and returns its dual
+function loadAndSolveConicProblem(c, A, b, K, C, solver)
+    
+    # load conic model
+    model = MathProgBase.ConicModel(solver)
+    MathProgBase.loadproblem!(model, c, A, b, K, C)
+  
+    #println(model) 
+    println("process id $(myid()) started")
+    #@show c, A, b, K, C
+ 
+    # solve conic model
+    MathProgBase.optimize!(model)
+    status = MathProgBase.status(model)
+
+    # return status and dual
+    println("process id $(myid()) status $(status)")
+    return status, MathProgBase.getdual(model)
+end
+
+end
+
+function loadMasterProblem(c, A, b, K, C, v, num_scen, solver)
+    num_var = length(c)
+    # load master problem
+    master_model = Model(solver=solver)
+    @defVar(master_model, x[1:num_var])
+    for i = 1:num_var
+        setCategory(x[i], v[i])
+    end
+    # add new objective variables for scenarios
+    # we assume the objective is sum of nonnegative terms
+    @defVar(master_model, θ[1:num_scen] >= 0.0)
+    @setObjective(master_model, Min, sum{c[i]*x[i], i in 1:num_var} + dot(ones(num_scen),θ))
+    # add constraint cones
+    for (cone, ind) in K
+        for i in 1:length(ind)
+            if cone == :Zero
+                @addConstraint(master_model, sum{A[ind[i],j]*x[j],j in 1:num_var} == b[ind[i]])
+            elseif cone == :NonNeg
+                @addConstraint(master_model, sum{A[ind[i],j]*x[j],j in 1:num_var} <= b[ind[i]])
+            elseif cone == :NonPos
+                @addConstraint(master_model, sum{A[ind[i],j]*x[j],j in 1:num_var} >= b[ind[i]])
+            elseif cone == :SOC
+                @addConstraint(master_model, norm(b[ind[2:length(ind)-1]] - sum{A[ind[2:length(ind)-1],j]*x[j], j in 1:num_var}) <= b[ind[1]] - sum{A[ind[1],j]*x[j], j in 1:num_var})
+                @addConstraint(master_model, sum{A[ind[1],j]*x[j], j in 1:num_var} <= b[ind[1]])
+            else
+                error("unrecognized cone $cone")
+            end
+        end
+    end       
+    # add variable cones
+    for (cone, ind) in C
+        if cone == :Zero
+            for i in ind
+                setLower(x[i], 0.0)
+                setUpper(x[i], 0.0)
+            end
+        elseif cone == :Free
+            # do nothing
+        elseif cone == :NonNeg
+            for i in ind
+                setLower(x[i], 0.0)
+            end
+        elseif cone == :NonPos
+            for i in ind
+                setUpper(x[i], 0.0)
+            end
+        elseif cone == :SOC
+            @addConstraint(master_model, norm(x[ind[2:length(ind)-1]]) <= x[ind[1]])
+            setLower(x[ind[1]], 0.0)
+        else
+            error("unrecognized cone $cone")
+        end
+    end
+
+    #MathProgBase.setvartype!(getInternalModel(master_model), [v;[:Cont for i = 1:num_scen]])
+    return master_model, x, θ
+end
+
+function addCuttingPlanes(master_model, num_scen, A_all, b_all, output, x, θ, separator)
+    cut_added = false
+    # add cutting planes, one per scenario
+    for i = 1:num_scen
+        #@show typeof(b_all[i+1])
+        coef = vecdot(output[i][2], A_all[i+1])
+        rhs = vecdot(output[i][2], b_all[i+1])
+        #@show size(coef*separator'), size(rhs)
+        # add an infeasibility cut
+        if output[i][1] == :Infeasible
+            @addConstraint(master_model, coef*x .<= rhs)
+            cut_added = true
+        # add an optimality cut
+        else
+            if getValue(θ[i]) < (coef*separator' - rhs)[1]
+                @addConstraint(master_model, coef*x - θ[i] .<= rhs)
+                cut_added = true
+            end
+        end
+    end
+    return cut_added
+
+end
+
+function Benders_pmap(c_all, A_all, B_all, b_all, K_all, C_all, v, master_solver, sub_solver)
+
+    println("Benders pmap started")
+    num_master_var = length(c_all[1])
+    num_scen = length(c_all) - 1
+
+    num_bins = zeros(num_scen)
+    for i = 1:num_scen
+        num_bins[i] = length(b_all[i+1])
+    end
+
+    println("Load master problem")
+    (master_model, x, θ) = loadMasterProblem(c_all[1], A_all[1], b_all[1], K_all[1], C_all[1], v, num_scen, master_solver)
+
+    cut_added = true
+    separator = zeros(num_master_var)
+    objval = Inf
+    status = :Infeasible
+    while cut_added
+        println("Iteration started")
+        status = solve(master_model)
+        if status == :Infeasible
+            break
+        end
+        objval = getObjectiveValue(master_model)
+        separator = zeros(num_master_var)
+        for i = 1:num_master_var
+            separator[i] = getValue(x[i])
+        end 
+        new_rhs = [zeros(Int(num_bins[i])) for i in 1:num_scen]
+        for i = 1:num_scen
+            new_rhs[i] = b_all[i+1] - A_all[i+1] * separator
+        end
+
+        output = pmap((a1,a2,a3,a4,a5,a6)->loadAndSolveConicProblem(a1,a2,a3,a4,a5,a6), [c_all[i+1] for i = 1:num_scen], [B_all[i] for i = 1:num_scen], [new_rhs[i] for i = 1:num_scen], [K_all[i+1] for i = 1:num_scen], [C_all[i+1] for i = 1:num_scen], [sub_solver for i = 1:num_scen])
+
+        #@show output
+        cut_added = addCuttingPlanes(master_model, num_scen, A_all, b_all, output, x, θ, separator)
+    end
+    return status, objval, separator 
+end
