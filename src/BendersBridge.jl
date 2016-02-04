@@ -140,20 +140,20 @@ function conicconstraintdata(m::Model)
     bndidx = 0
     for idx in 1:m.numCols
         lb = m.colLower[idx]
-        str = Symbol(m.colNames[idx])
-        @assert str != Symbol("")
+        # get a variable handle
+        var = Variable(m, idx)
         # identify integrality information
-        push!(v, getCategory(m.varDict[str]))
+        push!(v, m.colCat[idx])
         if lb != -Inf
             bndidx += 1
             nnz += 1
             c   += 1
-            (m.varDict[str].m === parent) && push!(I_m, c)
-            (m.varDict[str].m === parent) && push!(J_m, idx)
-            (m.varDict[str].m === parent) && push!(V_m, 1.0)
-            (m.varDict[str].m !== parent) && push!(I_s, c)
-            (m.varDict[str].m !== parent) && push!(J_s, idx)
-            (m.varDict[str].m !== parent) && push!(V_s, 1.0)
+            (var.m === parent) && push!(I_m, c)
+            (var.m === parent) && push!(J_m, idx)
+            (var.m === parent) && push!(V_m, 1.0)
+            (var.m !== parent) && push!(I_s, c)
+            (var.m !== parent) && push!(J_s, idx)
+            (var.m !== parent) && push!(V_s, 1.0)
             b[c] = lb
             push!(nonpos_rows, c)
         end
@@ -161,12 +161,12 @@ function conicconstraintdata(m::Model)
         if ub != Inf
             bndidx += 1
             c   += 1
-            (m.varDict[str].m == parent) && push!(I_m, c)
-            (m.varDict[str].m == parent) && push!(J_m, idx)
-            (m.varDict[str].m == parent) && push!(V_m, 1.0)
-            (m.varDict[str].m != parent) && push!(I_s, c)
-            (m.varDict[str].m != parent) && push!(J_s, idx)
-            (m.varDict[str].m != parent) && push!(V_s, 1.0)
+            (var.m == parent) && push!(I_m, c)
+            (var.m == parent) && push!(J_m, idx)
+            (var.m == parent) && push!(V_m, 1.0)
+            (var.m != parent) && push!(I_s, c)
+            (var.m != parent) && push!(J_s, idx)
+            (var.m != parent) && push!(V_s, 1.0)
             b[c] = ub
             push!(nonneg_rows, c)
         end
@@ -238,12 +238,12 @@ end
 
 function BendersBridge(m::Model, master_solver, sub_solver)
 
-    c_all = Array[]
-    A_all = SparseMatrixCSC[]
-    B_all = SparseMatrixCSC[]
-    b_all = Array[]
-    K_all = Array[]
-    C_all = Array[]
+    c_all = Vector{Float64}[]
+    A_all = SparseMatrixCSC{Float64}[]
+    B_all = SparseMatrixCSC{Float64}[]
+    b_all = Vector{Float64}[]
+    K_all = Any[]
+    C_all = Any[]
     v_all = Symbol[]
 
     (c,A,B,b,var_cones, constr_cones, v) = conicconstraintdata(m)
@@ -267,7 +267,7 @@ function BendersBridge(m::Model, master_solver, sub_solver)
     end
 
     println("Entering Benders")
-    return Benders_pmap(c_all,A_all,B_all,b_all,K_all,C_all,v_all,master_solver,sub_solver,1e-5)
+    return Benders_pmap(c_all,A_all,B_all,b_all,K_all,C_all,v_all,master_solver,sub_solver)
 
 
 end

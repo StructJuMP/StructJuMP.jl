@@ -127,7 +127,7 @@ function addCuttingPlanes(master_model, num_scen, A_all, b_all, output, x, θ, s
 
 end
 
-function Benders_pmap(c_all, A_all, B_all, b_all, K_all, C_all, v, master_solver, sub_solver, TOL)
+function Benders_pmap(c_all, A_all, B_all, b_all, K_all, C_all, v, master_solver, sub_solver, TOL=1e-5)
 
     println("Benders pmap started")
     num_master_var = length(c_all[1])
