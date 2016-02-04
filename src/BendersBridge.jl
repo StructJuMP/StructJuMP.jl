@@ -17,7 +17,7 @@ function conicconstraintdata(m::Model)
     end
     v = Symbol[]
     obj_coeff = zeros(m.numCols)
-    for i in 1:length(m.obj.aff.vars)
+    for i in eachindex(m.obj.aff.vars)
         var = m.obj.aff.vars[i]
         coeff = m.obj.aff.coeffs[i]
         obj_coeff[var.col] = coeff
@@ -27,7 +27,7 @@ function conicconstraintdata(m::Model)
     con_cones = Any[]
     nnz = 0
 
-    linconstr = m.linconstr
+    linconstr::Vector{LinearConstraint} = m.linconstr
     numLinRows = length(linconstr)
     numBounds = 0
     nonNeg  = Int[]
@@ -123,8 +123,8 @@ function conicconstraintdata(m::Model)
         coeffs = linconstr[c].terms.coeffs
         vars = linconstr[c].terms.vars
         # eliminated collect duplicates
-        for ind in 1:length(coeffs)
-            if vars[ind].m == parent
+        for ind in eachindex(coeffs)
+            if vars[ind].m === parent
                 push!(I_m, c)
                 push!(J_m, vars[ind].col)
                 push!(V_m, coeffs[ind])
@@ -141,18 +141,19 @@ function conicconstraintdata(m::Model)
     for idx in 1:m.numCols
         lb = m.colLower[idx]
         str = Symbol(m.colNames[idx])
+        @assert str != Symbol("")
         # identify integrality information
         push!(v, getCategory(m.varDict[str]))
         if lb != -Inf
             bndidx += 1
             nnz += 1
             c   += 1
-            (m.varDict[str].m == parent) && push!(I_m, c)
-            (m.varDict[str].m == parent) && push!(J_m, idx)
-            (m.varDict[str].m == parent) && push!(V_m, 1.0)
-            (m.varDict[str].m != parent) && push!(I_s, c)
-            (m.varDict[str].m != parent) && push!(J_s, idx)
-            (m.varDict[str].m != parent) && push!(V_s, 1.0)
+            (m.varDict[str].m === parent) && push!(I_m, c)
+            (m.varDict[str].m === parent) && push!(J_m, idx)
+            (m.varDict[str].m === parent) && push!(V_m, 1.0)
+            (m.varDict[str].m !== parent) && push!(I_s, c)
+            (m.varDict[str].m !== parent) && push!(J_s, idx)
+            (m.varDict[str].m !== parent) && push!(V_s, 1.0)
             b[c] = lb
             push!(nonpos_rows, c)
         end
@@ -180,7 +181,7 @@ function conicconstraintdata(m::Model)
     if !isempty(eq_rows)
         push!(con_cones, (:Zero,eq_rows))
     end
-    #@assert c == numLinRows + numBounds
+    @assert c == numLinRows + numBounds
 
     tmpelts = tmprow.elts
     tmpnzidx = tmprow.nzidx
@@ -194,8 +195,8 @@ function conicconstraintdata(m::Model)
         nnz = tmprow.nnz
         indices = tmpnzidx[1:nnz]
         vars = expr.aff.vars
-        for i = 1:length(vars)
-            if vars[i].m == parent
+        for i in eachindex(vars)
+            if vars[i].m === parent
                 push!(I_m, c)
                 push!(J_m, indices[i])
                 push!(V_m, tmpelts[indices[i]])
@@ -227,22 +228,22 @@ function conicconstraintdata(m::Model)
         end
         push!(con_cones, (:SOC, soc_start:c))
     end
-    #@assert c == numLinRows + numBounds + numQuadRows + numSOCRows
+    @assert c == numLinRows + numBounds + numSOCRows
 
-    A = sparse(I_m, J_m, V_m, numRows, numMasterCols)#, numRows, m.numCols)
-    B = sparse(I_s, J_s, V_s, numRows, m.numCols)#, numRows, m.numCols)
+    A = sparse(I_m, J_m, V_m, numRows, numMasterCols)
+    B = sparse(I_s, J_s, V_s, numRows, m.numCols)
   
     return obj_coeff, A, B, b, var_cones, con_cones, v
 end
 
 function BendersBridge(m::Model, master_solver, sub_solver)
 
-    c_all = Any[]
-    A_all = Any[]
-    B_all = Any[]
-    b_all = Any[]
-    K_all = Any[]
-    C_all = Any[]
+    c_all = Array[]
+    A_all = SparseMatrixCSC[]
+    B_all = SparseMatrixCSC[]
+    b_all = Array[]
+    K_all = Array[]
+    C_all = Array[]
     v_all = Symbol[]
 
     (c,A,B,b,var_cones, constr_cones, v) = conicconstraintdata(m)
@@ -266,7 +267,7 @@ function BendersBridge(m::Model, master_solver, sub_solver)
     end
 
     println("Entering Benders")
-    return Benders_pmap(c_all,A_all,B_all,b_all,K_all,C_all,v_all,master_solver,sub_solver)
+    return Benders_pmap(c_all,A_all,B_all,b_all,K_all,C_all,v_all,master_solver,sub_solver,1e-5)
 
 
 end

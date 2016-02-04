@@ -14,7 +14,7 @@ facts("[Benders] Empty scenario test") do
     m = StochasticModel(0)
     @defVar(m, x, Int)
     @addConstraint(m, x <= 4)
-    setObjective(m, :Min, -5*x)
+    @setObjective(m, :Min, -5*x)
 
     output = BendersBridge(m, misocp_solver, socp_solver) 
 
@@ -31,13 +31,13 @@ facts("[Benders] Infeasible problem test") do
     @defVar(m, x, Int)
 
     @addConstraint(m, x <= 1)
-    setObjective(m, :Min, -5*x)
+    @setObjective(m, :Min, -5*x)
 
     bl = StochasticBlock(m)
     @defVar(bl, y1 >= 2)
     @defVar(bl, y2 <= 2)
     @addConstraint(bl, x >= y1)
-    @addConstraint(bl, norm([y1]) <= y2)
+    @addConstraint(bl, norm(y1) <= y2)
     @setObjective(bl, Min, 2*y1 + y2)
 
     output = BendersBridge(m, misocp_solver, socp_solver) 
@@ -54,13 +54,13 @@ facts("[Benders] Infeasibility cut execution test #1") do
     @defVar(m, x, Int)
 
     @addConstraint(m, x <= 4)
-    setObjective(m, :Min, -5*x)
+    @setObjective(m, :Min, -5*x)
 
     bl = StochasticBlock(m)
     @defVar(bl, y1 >= 0)
     @defVar(bl, y2 <= 2)
     @addConstraint(bl, x <= y1)
-    @addConstraint(bl, norm([y1]) <= y2)
+    @addConstraint(bl, norm(y1) <= y2)
     @setObjective(bl, Min, 2*y1 + y2)
 
     output = BendersBridge(m, misocp_solver, socp_solver) 
@@ -78,13 +78,13 @@ facts("[Benders] Optimality cut execution test #1") do
     @defVar(m, x, Int)
 
     @addConstraint(m, x <= 4)
-    setObjective(m, :Min, -5*x)
+    @setObjective(m, :Min, -5*x)
 
     bl = StochasticBlock(m)
     @defVar(bl, y1 >= 2)
     @defVar(bl, y2 <= 4)
     @addConstraint(bl, x <= y1)
-    @addConstraint(bl, norm([y1]) <= y2)
+    @addConstraint(bl, norm(y1) <= y2)
     @setObjective(bl, Min, 2*y1 + y2)
 
     output = BendersBridge(m, misocp_solver, socp_solver) 

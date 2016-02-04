@@ -56,19 +56,19 @@ function loadMasterProblem(c, A, b, K, C, v, num_scen, solver)
     # add new objective variables for scenarios
     # we assume the objective is sum of nonnegative terms
     @defVar(master_model, θ[1:num_scen] >= 0.0)
-    @setObjective(master_model, Min, sum{c[i]*x[i], i in 1:num_var} + dot(ones(num_scen),θ))
+    @setObjective(master_model, Min, sum{c[i]*x[i], i in 1:num_var} + sum(θ))
     # add constraint cones
     for (cone, ind) in K
         for i in 1:length(ind)
             if cone == :Zero
-                @addConstraint(master_model, sum{A[ind[i],j]*x[j],j in 1:num_var} == b[ind[i]])
+                @addConstraint(master_model, A[ind[i],:]*x .== b[ind[i]])
             elseif cone == :NonNeg
-                @addConstraint(master_model, sum{A[ind[i],j]*x[j],j in 1:num_var} <= b[ind[i]])
+                @addConstraint(master_model, A[ind[i],:]*x .<= b[ind[i]])
             elseif cone == :NonPos
-                @addConstraint(master_model, sum{A[ind[i],j]*x[j],j in 1:num_var} >= b[ind[i]])
+                @addConstraint(master_model, A[ind[i],:]*x .>= b[ind[i]])
             elseif cone == :SOC
-                @addConstraint(master_model, norm(b[ind[2:length(ind)-1]] - sum{A[ind[2:length(ind)-1],j]*x[j], j in 1:num_var}) <= b[ind[1]] - sum{A[ind[1],j]*x[j], j in 1:num_var})
-                @addConstraint(master_model, sum{A[ind[1],j]*x[j], j in 1:num_var} <= b[ind[1]])
+                @addConstraint(master_model, norm(b[ind[2:end-1]] - A[ind[2:end-1],:]*x) .<= b[ind[1]] - A[ind[1],:]*x)
+                @addConstraint(master_model, A[ind[1],:]*x .<= b[ind[1]])
             else
                 error("unrecognized cone $cone")
             end
@@ -92,7 +92,7 @@ function loadMasterProblem(c, A, b, K, C, v, num_scen, solver)
                 setUpper(x[i], 0.0)
             end
         elseif cone == :SOC
-            @addConstraint(master_model, norm(x[ind[2:length(ind)-1]]) <= x[ind[1]])
+            @addConstraint(master_model, norm(x[ind[2:end-1]]) <= x[ind[1]])
             setLower(x[ind[1]], 0.0)
         else
             error("unrecognized cone $cone")
@@ -103,7 +103,7 @@ function loadMasterProblem(c, A, b, K, C, v, num_scen, solver)
     return master_model, x, θ
 end
 
-function addCuttingPlanes(master_model, num_scen, A_all, b_all, output, x, θ, separator)
+function addCuttingPlanes(master_model, num_scen, A_all, b_all, output, x, θ, separator, TOL)
     cut_added = false
     # add cutting planes, one per scenario
     for i = 1:num_scen
@@ -117,7 +117,7 @@ function addCuttingPlanes(master_model, num_scen, A_all, b_all, output, x, θ, s
             cut_added = true
         # add an optimality cut
         else
-            if getValue(θ[i]) < (coef*separator' - rhs)[1]
+            if getValue(θ[i]) < (coef*separator' - rhs)[1] - TOL
                 @addConstraint(master_model, coef*x - θ[i] .<= rhs)
                 cut_added = true
             end
@@ -127,13 +127,13 @@ function addCuttingPlanes(master_model, num_scen, A_all, b_all, output, x, θ, s
 
 end
 
-function Benders_pmap(c_all, A_all, B_all, b_all, K_all, C_all, v, master_solver, sub_solver)
+function Benders_pmap(c_all, A_all, B_all, b_all, K_all, C_all, v, master_solver, sub_solver, TOL)
 
     println("Benders pmap started")
     num_master_var = length(c_all[1])
     num_scen = length(c_all) - 1
 
-    num_bins = zeros(num_scen)
+    num_bins = zeros(Int, num_scen)
     for i = 1:num_scen
         num_bins[i] = length(b_all[i+1])
     end
@@ -156,7 +156,7 @@ function Benders_pmap(c_all, A_all, B_all, b_all, K_all, C_all, v, master_solver
         for i = 1:num_master_var
             separator[i] = getValue(x[i])
         end 
-        new_rhs = [zeros(Int(num_bins[i])) for i in 1:num_scen]
+        new_rhs = [zeros(num_bins[i]) for i in 1:num_scen]
         for i = 1:num_scen
             new_rhs[i] = b_all[i+1] - A_all[i+1] * separator
         end
@@ -164,7 +164,7 @@ function Benders_pmap(c_all, A_all, B_all, b_all, K_all, C_all, v, master_solver
         output = pmap((a1,a2,a3,a4,a5,a6)->loadAndSolveConicProblem(a1,a2,a3,a4,a5,a6), [c_all[i+1] for i = 1:num_scen], [B_all[i] for i = 1:num_scen], [new_rhs[i] for i = 1:num_scen], [K_all[i+1] for i = 1:num_scen], [C_all[i+1] for i = 1:num_scen], [sub_solver for i = 1:num_scen])
 
         #@show output
-        cut_added = addCuttingPlanes(master_model, num_scen, A_all, b_all, output, x, θ, separator)
+        cut_added = addCuttingPlanes(master_model, num_scen, A_all, b_all, output, x, θ, separator, TOL)
     end
     return status, objval, separator 
 end
