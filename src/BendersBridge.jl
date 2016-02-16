@@ -258,8 +258,6 @@ function BendersBridge(m::Model, master_solver, sub_solver)
 
     end
 
-    @show A_all
-    @show B_all
     println("Entering Benders")
     return Benders_pmap(c_all,A_all,B_all,b_all,K_all,C_all,v_all,master_solver,sub_solver)
 
