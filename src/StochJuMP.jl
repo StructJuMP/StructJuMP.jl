@@ -1,48 +1,25 @@
 module StochJuMP
 
-import MPI
-using JuMP # To reexport, should be using (not import)
+# import MPI
+import JuMP # To reexport, should be using (not import)
 import MathProgBase
 import MathProgBase.MathProgSolverInterface
 
 export StochasticModel, getStochastic, getparent, getchildren, getProcIdxSet,
        num_scenarios, StochasticBlock, @second_stage
 
-#############################################################################
-# JuMP rexports
-export
-# Objects
-    Model, Variable, AffExpr, QuadExpr, LinearConstraint, QuadConstraint, MultivarDict,
-    ConstraintRef,
-# Functions
-    # Model related
-    getNumVars, getNumConstraints, getObjectiveValue, getObjective,
-    getObjectiveSense, setObjectiveSense, writeLP, writeMPS, setObjective,
-    addConstraint, addSOS1, addSOS2, solve,
-    getInternalModel, setPresolve, buildInternalModel,
-    # Variable
-    setName, getName, setLower, setUpper, getLower, getUpper,
-    getValue, setValue, getDual,
-    # Expressions and constraints
-    affToStr, quadToStr, conToStr, chgConstrRHS,
-    
-# Macros and support functions
-    @addConstraint, @addConstraints, @defVar, 
-    @defConstrRef, @setObjective, addToExpression,
-    @setNLObjective, @addNLConstraint, @gendict
-
-
 # --------------
 # StochasticData
 # --------------
 
-# Teyp Define
-type StochasticData
-    probability::Vector{Number}
+# Type Define
+type StochasticData{T<:Number}
+    probability::Vector{T}
     children::Vector{JuMP.Model}
     parent
     num_scen::Int
 end
+
 
 # Constructor with no argument
 StochasticData() = StochasticData(Number[], JuMP.Model[], nothing, 0)
@@ -56,15 +33,15 @@ StochasticData(children, parent, nscen) = StochasticData(Number[], children, par
 # ---------------
 
 # Constructor with the number of scenarios
-function StochasticModel(numScen::Int)
-    # MPI.init()
-    m = JuMP.Model()
-    m.ext[:Stochastic] = StochasticData(JuMP.Model[],nothing,numScen)
+function StochasticModel(;solver=JuMP.UnsetSolver(), num_scenarios::Int=0)
+    m = JuMP.Model(solver=solver)
+    m.ext[:Stochastic] = StochasticData(JuMP.Model[],nothing,num_scenarios)
     return m
 end
 
 # Constructor with children and partent models
 StochasticModel(children,parent) = StochasticModel(children,parent,0)
+
 function StochasticModel(children, parent, nscen)
     m = JuMP.Model(solver=parent.solver)
     m.ext[:Stochastic] = StochasticData(children, parent, nscen)
@@ -78,7 +55,7 @@ end
 
 function getStochastic(m::JuMP.Model)
     if haskey(m.ext, :Stochastic)
-        return m.ext[:Stochastic]
+        return m.ext[:Stochastic]::StochasticData
     else
         error("This functionality is only available for StochasticModels")
     end
