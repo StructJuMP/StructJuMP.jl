@@ -4,6 +4,7 @@ module StochJuMP
 import JuMP # To reexport, should be using (not import)
 import MathProgBase
 import MathProgBase.MathProgSolverInterface
+import ReverseDiffSparse
 
 export StochasticModel, getStochastic, getparent, getchildren, getProcIdxSet,
        num_scenarios, StochasticBlock, @second_stage
@@ -18,14 +19,15 @@ type StochasticData{T<:Number}
     children::Vector{JuMP.Model}
     parent
     num_scen::Int
+    othervars::Vector{JuMP.Variable}
 end
 
 
 # Constructor with no argument
-StochasticData() = StochasticData(Number[], JuMP.Model[], nothing, 0)
+StochasticData() = StochasticData(Float64[], JuMP.Model[], nothing, 0, JuMP.Variable[])
 
 # Constructor without specifyng probabilities
-StochasticData(children, parent, nscen) = StochasticData(Number[], children, parent, nscen)
+StochasticData(children, parent, nscen) = StochasticData(Float64[], children, parent, nscen, JuMP.Variable[])
 
 
 # ---------------
@@ -112,5 +114,7 @@ macro second_stage(m,ind,code)
         end
     end
 end
+
+include("nlp.jl")
 
 end
