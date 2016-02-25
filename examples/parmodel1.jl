@@ -6,7 +6,7 @@ firststage = StochasticModel()
 @addNLConstraint(firststage, x[1] * x[2] == 10)
 
 for scen in 1:2
-    bl = StochasticBlock(firststage)
+    bl = StochasticModel(parent=firststage)
     @defVar(bl, y)
     @addConstraint(bl, x[2]^2 + x[1]*y ≤ 5)
     @setNLObjective(bl, Min, (x[1]+x[2])*y)
