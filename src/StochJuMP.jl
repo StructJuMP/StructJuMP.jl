@@ -20,14 +20,15 @@ type StochasticData{T<:Number}
     parent
     num_scen::Int
     othervars::Vector{JuMP.Variable}
+    othermap::Dict{JuMP.Variable,JuMP.Variable}
 end
 
 
 # Constructor with no argument
-StochasticData() = StochasticData(Float64[], JuMP.Model[], nothing, 0, JuMP.Variable[])
+StochasticData() = StochasticData(Float64[], JuMP.Model[], nothing, 0, JuMP.Variable[], Dict{JuMP.Variable,JuMP.Variable}())
 
 # Constructor without specifyng probabilities
-StochasticData(children, parent, nscen) = StochasticData(Float64[], children, parent, nscen, JuMP.Variable[])
+StochasticData(children, parent, nscen) = StochasticData(Float64[], children, parent, nscen, JuMP.Variable[],Dict{JuMP.Variable,JuMP.Variable}())
 
 
 # ---------------
@@ -38,6 +39,12 @@ StochasticData(children, parent, nscen) = StochasticData(Float64[], children, pa
 function StochasticModel(;solver=JuMP.UnsetSolver(), num_scenarios::Int=0)
     m = JuMP.Model(solver=solver)
     m.ext[:Stochastic] = StochasticData(JuMP.Model[],nothing,num_scenarios)
+    return m
+end
+
+function StochasticModel(nscen::Int)
+    m = JuMP.Model(solver=JuMP.UnsetSolver())
+    m.ext[:Stochastic] = StochasticData(JuMP.Model[],nothing,nscen)
     return m
 end
 
