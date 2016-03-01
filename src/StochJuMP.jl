@@ -7,62 +7,44 @@ import MathProgBase.MathProgSolverInterface
 import ReverseDiffSparse
 
 export StochasticModel, getStochastic, getparent, getchildren, getProcIdxSet,
-       num_scenarios, StochasticBlock, @second_stage
+       num_scenarios, @second_stage
 
-# --------------
+# ---------------
 # StochasticData
-# --------------
+# ---------------
 
-# Type Define
-type StochasticData{T<:Number}
-    probability::Vector{T}
+type StochasticData
+    probability::Vector{Float64}
     children::Vector{JuMP.Model}
     parent
     num_scen::Int
     othervars::Vector{JuMP.Variable}
 end
 
-
-# Constructor with no argument
-StochasticData() = StochasticData(Float64[], JuMP.Model[], nothing, 0, JuMP.Variable[])
-
-# Constructor without specifyng probabilities
-StochasticData(children, parent, nscen) = StochasticData(Float64[], children, parent, nscen, JuMP.Variable[])
-
+default_probability(m::JuMP.Model) = 1 / num_scenarios(m)
+default_probability(::Void) = 1.0
 
 # ---------------
 # StochasticModel
 # ---------------
 
 # Constructor with the number of scenarios
-function StochasticModel(;solver=JuMP.UnsetSolver(), num_scenarios::Int=0)
+function StochasticModel(;solver=JuMP.UnsetSolver(), parent=nothing, num_scenarios::Int=0, prob::Float64=default_probability(parent))
     m = JuMP.Model(solver=solver)
-    m.ext[:Stochastic] = StochasticData(JuMP.Model[],nothing,num_scenarios)
-    return m
+    if parent !== nothing
+        stoch = getStochastic(parent)
+        push!(stoch.children, m)
+        push!(stoch.probability, prob)
+    end
+    m.ext[:Stochastic] = StochasticData(Float64[], JuMP.Model[], parent, num_scenarios, JuMP.Variable[])
+    m
 end
-
-# Constructor with children and partent models
-StochasticModel(children,parent) = StochasticModel(children,parent,0)
-
-function StochasticModel(children, parent, nscen)
-    m = JuMP.Model(solver=parent.solver)
-    m.ext[:Stochastic] = StochasticData(children, parent, nscen)
-    return m
-end
-
 
 # -------------
 # Get functions
 # -------------
 
-function getStochastic(m::JuMP.Model)
-    if haskey(m.ext, :Stochastic)
-        return m.ext[:Stochastic]::StochasticData
-    else
-        error("This functionality is only available for StochasticModels")
-    end
-end
-
+getStochastic(m::JuMP.Model)  = m.ext[:Stochastic]
 getparent(m::JuMP.Model)      = getStochastic(m).parent
 getchildren(m::JuMP.Model)    = getStochastic(m).children
 getprobability(m::JuMP.Model) = getStochastic(m).probability
@@ -86,24 +68,7 @@ end
 
 function getProcIdxSet(m::JuMP.Model)
     numScens = num_scenarios(m)
-    return getProcIdxSet(numScens);
-end
-
-# ---------------
-# StochasticBlock
-# ---------------
-
-# Constructor without probability
-StochasticBlock(m::JuMP.Model) = StochasticBlock(m::JuMP.Model, 1.0 / num_scenarios(m))
-
-# Construcor with probability
-function StochasticBlock(m::JuMP.Model, probability::Number)
-    stoch = getStochastic(m)
-    #stoch.parent = m
-    ch = StochasticModel(JuMP.Model[], m)
-    push!(stoch.children, ch)
-    push!(stoch.probability, probability)
-    return ch
+    return getProcIdxSet(numScens)
 end
 
 macro second_stage(m,ind,code)
