@@ -6,7 +6,7 @@ firststage = StochasticModel()
 @setNLObjective(firststage, Min, x[1]^2 + x[2]^2)
 
 for scen in 1:2
-    bl = StochasticBlock(firststage)
+    bl = StochasticModel(parent=firststage)
     @defVar(bl, y[1:2])
     @addConstraint(bl, x[3-scen] + sum(y) ≥  0)
     @addConstraint(bl, x[3-scen] + sum(y) ≤ 50)

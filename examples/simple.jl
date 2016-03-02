@@ -12,11 +12,11 @@ end
 p = 3
 q = 2
 for s = 1:p
-    bl = StochasticBlock(m, "level1-$s")
+    bl = StochasticModel(parent=m)
     @defVar(bl, z[1:n] >= 0)
-    @addConstraint(bl, sum{z[i], i=1:n} == 1)
+    @addConstraint(bl, x + sum{z[i], i=1:n} == 1)
     for t = 1:q
-        bll = StochasticBlock(bl, "level2-$s,$t")
+        bll = StochasticModel(parent=bl)
         @defVar(bll, w[1:n] >= 0)
         @addConstraint(bll, sum{w[i], i=1:n; iseven(i)} == 1)
         par = parent(bll)
@@ -25,3 +25,8 @@ for s = 1:p
         @addConstraint(bll, 0 >= sum{w[i], i=1:n})
     end
 end
+
+@addConstraint(m, sum{z, bl in children(m), z=getVar(bl,:z)} == 1)
+
+
+sum{indx; cond(indx)} (models[indx].y[1] + x[1]) = 0

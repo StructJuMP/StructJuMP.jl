@@ -1,4 +1,4 @@
-using StochJuMP, MPI 
+using StochJuMP, MPI
 
 numScens = 2
 m = StochasticModel(numScens)
@@ -16,10 +16,9 @@ qc   = [1,0.5]
 ac   = [1,0.75]
 
 @second_stage m scen begin
-    bl = StochasticBlock(m)
+    bl = StochasticModel(parent=m)
     @defVar(bl, 0 <= w <= 1)
     @addConstraint(bl, coef[scen]w - x - y <= rhs[scen])
     @addConstraint(bl, coef[scen]w + x     == rhs[scen])
     setObjective(bl, :Min, qc[scen]*w*w + ac[scen]*w)
 end
-
