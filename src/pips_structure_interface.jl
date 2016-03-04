@@ -151,12 +151,12 @@ function get_h_var_idx(rowid, colid)
 end
 
 
-function SparseMatrix.sparse(I,J,V;keepzeros=false)
+function SparseMatrix.sparse(I,J,V, M, N;keepzeros=false)
     if(!keepzeros)
-        return sparse(I,J,V)
+        return sparse(I,J,V,M,N)
     else
-        full = sparse(I,J,ones(Float64,length(I)))
-        actual = sparse(I,J,V)
+        full = sparse(I,J,ones(Float64,length(I)),M,N)
+        actual = sparse(I,J,V,M,N)
         fill!(full.nzval,0.0)
         for i in eachindex(actual)
             full[i[1],i[2]] = actual[i]
@@ -268,8 +268,8 @@ function str_eval_jac_g(rowid, colid, x0 , x1, mode, e_rowidx, e_colptr, e_value
             end
         end
 
-        eq_jac = sparse(eq_jac_I,eq_jac_J,ones(Float64,length(eq_jac_I)))
-        ieq_jac = sparse(ieq_jac_I,ieq_jac_J,ones(Float64,length(ieq_jac_I)))
+        eq_jac = sparse(eq_jac_I,eq_jac_J,ones(Float64,length(eq_jac_I)),length(eq_idx),get_numvar(colid))
+        ieq_jac = sparse(ieq_jac_I,ieq_jac_J,ones(Float64,length(ieq_jac_I)),length(ieq_idx),get_numvar(colid))
         # @show (length(eq_jac.nzval), length(ieq_jac.nzval))
 
         return (length(eq_jac.nzval), length(ieq_jac.nzval))
@@ -307,7 +307,7 @@ function str_eval_jac_g(rowid, colid, x0 , x1, mode, e_rowidx, e_colptr, e_value
         end
 
         if(length(eq_jac_g) != 0)
-            eq_jac = sparse(eq_jac_I,eq_jac_J,eq_jac_g, keepzeros=true)
+            eq_jac = sparse(eq_jac_I,eq_jac_J,eq_jac_g, length(eq_idx),get_numvar(colid), keepzeros=true)
             # @show eq_jac
             # @show eq_jac.rowval
             # @show eq_jac.colptr
@@ -320,7 +320,7 @@ function str_eval_jac_g(rowid, colid, x0 , x1, mode, e_rowidx, e_colptr, e_value
         end
 
         if(length(ieq_jac_g) != 0)
-            ieq_jac = sparse(ieq_jac_I,ieq_jac_J,ieq_jac_g,  keepzeros=true)
+            ieq_jac = sparse(ieq_jac_I,ieq_jac_J,ieq_jac_g, length(ieq_idx),get_numvar(colid), keepzeros=true)
             # @show ieq_jac
             # @show ieq_jac.rowval
             # @show ieq_jac.colptr
@@ -392,20 +392,21 @@ function str_eval_h(rowid, colid, x0, x1, obj_factor, lambda, mode, rowidx, colp
         
         if(rowid !=0 && colid == 0)  #root diag contrib.
             @show "root contrib", rowid, colid
-            d1 = get_numvar(0)
             (h0_I,h0_J) = MathProgBase.hesslag_structure(get_nlp_evaluator(0))
-            str_laghess = sparse([new_h_I;h0_I], [new_h_J;h0_J], [new_h;zeros(Float64,length(h0_I))], keepzeros=true)
-            @show str_laghess, length(str_laghess.nzval)
-
+            str_laghess = sparse([new_h_I;h0_I], [new_h_J;h0_J], [new_h;zeros(Float64,length(h0_I))], length(row_var_idx), length(col_var_idx), keepzeros=true)
+            @show str_laghess.m, str_laghess.n, length(str_laghess.nzval)
+            @show str_laghess
+            
             array_copy(str_laghess.rowval,1,rowidx,1,length(str_laghess.rowval))
             array_copy(str_laghess.colptr,1,colptr,1,length(str_laghess.colptr))
             array_copy(str_laghess.nzval, 1,values,1,length(str_laghess.nzval))
 
             # @show str_laghess.nzval
         else
-            str_laghess = sparse(new_h_I, new_h_J, new_h, keepzeros=true)
-            @show str_laghess, length(str_laghess.nzval)
-
+            str_laghess = sparse(new_h_I, new_h_J, new_h, length(row_var_idx), length(col_var_idx), keepzeros=true)
+            @show str_laghess.m, str_laghess.n, length(str_laghess.nzval)
+            @show str_laghess
+            
             array_copy(str_laghess.rowval,1,rowidx,1,length(str_laghess.rowval))
             array_copy(str_laghess.colptr,1,colptr,1,length(str_laghess.colptr))
             array_copy(str_laghess.nzval, 1,values,1,length(str_laghess.nzval))
