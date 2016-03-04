@@ -45,7 +45,7 @@ end
 
 function get_nlp_evaluator(id)
     e = JuMPNLPEvaluator(get_model(id))
-    MathProgBase.initialize(e,[:Grad,:Jac,:ExprGraph,:Hess])
+    MathProgBase.initialize(e,[:Grad,:Jac,:Hess])
     return e
 end
 
@@ -240,7 +240,7 @@ function str_eval_grad_f(rowid, colid, x0, x1, new_grad_f)
 end
 
 function str_eval_jac_g(rowid, colid, x0 , x1, mode, e_rowidx, e_colptr, e_values, i_rowidx, i_colptr, i_values)
-    @show "str_eval_jac_g", rowid, colid, mode
+    # @show "str_eval_jac_g", rowid, colid, mode
     @assert rowid<num_scenarios(m)+1 && colid < num_scenarios(m) + 1
     @assert rowid >= colid
     if(mode == :Structure)
@@ -334,12 +334,12 @@ function str_eval_jac_g(rowid, colid, x0 , x1, mode, e_rowidx, e_colptr, e_value
     else
         @assert false mode
     end
-    @show "end str_eval_jac_g"
+    # @show "end str_eval_jac_g"
 end
 
 
 function str_eval_h(rowid, colid, x0, x1, obj_factor, lambda, mode, rowidx, colptr, values)
-    @show "str_eval_h", rowid, colid, mode, length(x0), length(x1),obj_factor, length(lambda), length(rowidx), length(colptr), length(values)
+    # @show "str_eval_h", rowid, colid, mode, length(x0), length(x1),obj_factor, length(lambda), length(rowidx), length(colptr), length(values)
     @assert rowid<num_scenarios(m)+1 && colid < num_scenarios(m) + 1
     low = min(rowid, colid)
     high = max(rowid, colid)
@@ -386,16 +386,16 @@ function str_eval_h(rowid, colid, x0, x1, obj_factor, lambda, mode, rowidx, colp
                 push!(new_h, vv)
             end
         end
-        @show new_h_I
-        @show new_h_J
-        @show new_h
+        # @show new_h_I
+        # @show new_h_J
+        # @show new_h
         
         if(rowid !=0 && colid == 0)  #root diag contrib.
-            @show "root contrib", rowid, colid
+            # @show "root contrib", rowid, colid
             (h0_I,h0_J) = MathProgBase.hesslag_structure(get_nlp_evaluator(0))
             str_laghess = sparse([new_h_I;h0_I], [new_h_J;h0_J], [new_h;zeros(Float64,length(h0_I))], length(row_var_idx), length(col_var_idx), keepzeros=true)
-            @show str_laghess.m, str_laghess.n, length(str_laghess.nzval)
-            @show str_laghess
+            # @show str_laghess.m, str_laghess.n, length(str_laghess.nzval)
+            # @show str_laghess
             
             array_copy(str_laghess.rowval,1,rowidx,1,length(str_laghess.rowval))
             array_copy(str_laghess.colptr,1,colptr,1,length(str_laghess.colptr))
@@ -404,8 +404,8 @@ function str_eval_h(rowid, colid, x0, x1, obj_factor, lambda, mode, rowidx, colp
             # @show str_laghess.nzval
         else
             str_laghess = sparse(new_h_I, new_h_J, new_h, length(row_var_idx), length(col_var_idx), keepzeros=true)
-            @show str_laghess.m, str_laghess.n, length(str_laghess.nzval)
-            @show str_laghess
+            # @show str_laghess.m, str_laghess.n, length(str_laghess.nzval)
+            # @show str_laghess
             
             array_copy(str_laghess.rowval,1,rowidx,1,length(str_laghess.rowval))
             array_copy(str_laghess.colptr,1,colptr,1,length(str_laghess.colptr))
@@ -418,7 +418,7 @@ function str_eval_h(rowid, colid, x0, x1, obj_factor, lambda, mode, rowidx, colp
     else
         @assert false mode
     end 
-    @show "end str_eval_h"
+    # @show "end str_eval_h"
 end
 
 
@@ -464,28 +464,3 @@ end
 
 end
 
-
-#an example model
-
-using ParPipsInterface
-
-using StochJuMP, JuMP
-
-#############
-# A sample model
-#############
-scen = 2
-m = StochasticModel(num_scenarios=scen)
-@defVar(m, x[1:2])
-@setNLObjective(m, Min, x[1]^2+x[2]^2)
-@addNLConstraint(m, x[1] * x[2] == 100)
-
-for i in 1:scen
-    bl = StochasticModel(parent=m)
-    # @defVar(bl, x[1:2])
-    @defVar(bl, y)
-    @addNLConstraint(bl, x[2]*x[1] + x[1]*y <= 10)
-    @setNLObjective(bl, Min, y^2)
-end
-
-ParPipsInterface.solve(m)
