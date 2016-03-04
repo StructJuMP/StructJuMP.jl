@@ -25,3 +25,10 @@ function JuMP.parseNLExpr_runtime(m::JuMP.Model, x::JuMP.Variable, tape, parent:
     nothing
 end
 
+function JuMP.parseNLExpr_runtime(m::JuMP.Model, x::Vector{JuMP.Variable}, tape, parent::Int, values)
+    # @show x, typeof(x)
+    for xi in x
+        # @show xi
+        JuMP.parseNLExpr_runtime(m, xi, tape, parent, values)
+    end
+end

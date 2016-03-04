@@ -16,9 +16,9 @@ m = StochasticModel(num_scenarios=scen)
 
 for i in 1:scen
     bl = StochasticModel(parent=m)
-    @defVar(bl, y)
-    @addNLConstraint(bl, x[2]*x[1] + x[1]*y <= 10)
-    @setNLObjective(bl, Min, y^2)
+    @defVar(bl, y[1:2])
+    @addNLConstraint(bl, x[2]*x[1] + x[1]*y[1]*y[2] <= 10)
+    @setNLObjective(bl, Min, (y[1]+y[2])^2)
 end
 
 ParPipsInterface.solve(m)

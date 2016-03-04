@@ -159,13 +159,10 @@ function SparseMatrix.sparse(I,J,V, M, N;keepzeros=false)
         actual = sparse(I,J,V,M,N)
         fill!(full.nzval,0.0)
 
-        @show full
         for c = 1:N
             crange = nzrange(actual,c)
             full.nzval[crange] = actual.nzval[crange] 
-        end
-        @show full
-        
+        end        
         return full
     end
 end
@@ -438,8 +435,6 @@ function createPipsProblem(model)
     
     prob = createProblemStruct(comm,
         num_scenarios(model),  #number scen
-        4,  #number var
-        3,  #number cons
         str_init_x0, str_prob_info, str_eval_f, str_eval_g, str_eval_grad_f,
         str_eval_jac_g, str_eval_h) 
     @show "end create problem "
