@@ -155,16 +155,14 @@ function SparseMatrix.sparse(I,J,V;keepzeros=false)
     if(!keepzeros)
         return sparse(I,J,V)
     else
-        holder = typemin(Float64)
-        for i=1:length(V)
-            @assert V[i] != holder
-            V[i] = V[i] == 0.0?holder:V[i]
+        full = sparse(I,J,ones(Float64,length(I)))
+        actual = sparse(I,J,V)
+        fill!(full.nzval,0.0)
+        for i in eachindex(actual)
+            full[i[1],i[2]] = actual[i]
         end
-        str = sparse(I,J,V)
-        for i=1:length(str.nzval)
-            str.nzval[i] = str.nzval[i] ==holder?0.0:str.nzval[i]
-        end
-        return str
+
+        return full
     end
 end
 ###############
@@ -388,15 +386,17 @@ function str_eval_h(rowid, colid, x0, x1, obj_factor, lambda, mode, rowidx, colp
                 push!(new_h, vv)
             end
         end
-        # @show new_h_I
-        # @show new_h_J
-        # @show new_h
+        @show new_h_I
+        @show new_h_J
+        @show new_h
         
         if(rowid !=0 && colid == 0)  #root diag contrib.
+            @show "root contrib", rowid, colid
             d1 = get_numvar(0)
             (h0_I,h0_J) = MathProgBase.hesslag_structure(get_nlp_evaluator(0))
             str_laghess = sparse([new_h_I;h0_I], [new_h_J;h0_J], [new_h;zeros(Float64,length(h0_I))], keepzeros=true)
-            
+            @show str_laghess, length(str_laghess.nzval)
+
             array_copy(str_laghess.rowval,1,rowidx,1,length(str_laghess.rowval))
             array_copy(str_laghess.colptr,1,colptr,1,length(str_laghess.colptr))
             array_copy(str_laghess.nzval, 1,values,1,length(str_laghess.nzval))
@@ -404,7 +404,8 @@ function str_eval_h(rowid, colid, x0, x1, obj_factor, lambda, mode, rowidx, colp
             # @show str_laghess.nzval
         else
             str_laghess = sparse(new_h_I, new_h_J, new_h, keepzeros=true)
-            # @show str_laghess
+            @show str_laghess, length(str_laghess.nzval)
+
             array_copy(str_laghess.rowval,1,rowidx,1,length(str_laghess.rowval))
             array_copy(str_laghess.colptr,1,colptr,1,length(str_laghess.colptr))
             array_copy(str_laghess.nzval, 1,values,1,length(str_laghess.nzval))
