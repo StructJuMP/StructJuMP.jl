@@ -23,8 +23,8 @@ end
 
 function get_numvar(id)
     mm = get_model(id)
-    nvar_1st = MathProgBase.numvar(m)
-    return id==0?nvar_1st:(MathProgBase.numvar(mm)-nvar_1st)
+    nvar = MathProgBase.numvar(mm) - length(getStochastic(mm).othermap)
+    return nvar
 end
 
 function get_numcon(id)
@@ -79,7 +79,7 @@ function get_constraints_idx(id)
         if lb[i] == ub[i]
             eq_idx[i] = length(eq_idx) + 1
         else
-            ieq_idx[i]= length(ieq_idx) + 1
+            ieq_idx[i] = length(ieq_idx) + 1 #remember to offset length(eq_idx)
         end
     end
     return (eq_idx,ieq_idx)
@@ -178,7 +178,7 @@ function str_prob_info(id,mode,clb,cub,rlb,rub)
     if mode == :Structure
         nn = get_numvar(id)
         mm = get_numcon(id)
-        # @show nn,mm
+        @show nn,mm
         return (nn,mm)
     elseif mode == :Values
         # @show length(clb),length(cub)
@@ -192,13 +192,14 @@ function str_prob_info(id,mode,clb,cub,rlb,rub)
         (eq_idx, ieq_idx) = get_constraints_idx(id)
         @assert length(lb) == length(ub)
         @assert length(eq_idx) + length(ieq_idx) == length(lb)
+        num_eq = length(eq_idx)
         for i in eq_idx
             rlb[i[2]] = lb[i[1]]
             rub[i[2]] = ub[i[1]]
         end
         for i in ieq_idx
-            rlb[i[2]] = lb[i[1]]
-            rub[i[2]] = ub[i[1]]
+            rlb[i[2]+num_eq] = lb[i[1]]
+            rub[i[2]+num_eq] = ub[i[1]]
         end
     else
         @assert false mode
@@ -227,6 +228,7 @@ end
 
 function str_eval_grad_f(rowid, colid, x0, x1, new_grad_f)
     @assert rowid >= colid
+    @assert sum(new_grad_f) == 0.0  sum(new_grad_f)
     e = get_nlp_evaluator(rowid)
     x = build_x(rowid,x0,x1)
     g = Vector{Float64}(length(x))
@@ -241,14 +243,17 @@ function str_eval_grad_f(rowid, colid, x0, x1, new_grad_f)
 end
 
 function str_eval_jac_g(rowid, colid, x0 , x1, mode, e_rowidx, e_colptr, e_values, i_rowidx, i_colptr, i_values)
-    # @show "str_eval_jac_g", rowid, colid, mode
+    @show "str_eval_jac_g", rowid, colid, mode
     @assert rowid<num_scenarios(m)+1 && colid < num_scenarios(m) + 1
     @assert rowid >= colid
     if(mode == :Structure)
         e = get_nlp_evaluator(rowid)
         (jac_I,jac_J) = MathProgBase.jac_structure(e)
+        @show jac_I
+        @show jac_J
         (eq_idx, ieq_idx) = get_constraints_idx(rowid)
         var_idx = get_jac_col_var_idx(rowid,colid)
+        @show var_idx
 
         eq_jac_I = Vector{Int}() 
         ieq_jac_I = Vector{Int}()
@@ -269,7 +274,11 @@ function str_eval_jac_g(rowid, colid, x0 , x1, mode, e_rowidx, e_colptr, e_value
             end
         end
 
+        @show eq_jac_I
+        @show eq_jac_J
         eq_jac = sparse(eq_jac_I,eq_jac_J,ones(Float64,length(eq_jac_I)),length(eq_idx),get_numvar(colid))
+        @show ieq_jac_I
+        @show ieq_jac_J
         ieq_jac = sparse(ieq_jac_I,ieq_jac_J,ones(Float64,length(ieq_jac_I)),length(ieq_idx),get_numvar(colid))
         # @show (length(eq_jac.nzval), length(ieq_jac.nzval))
 
@@ -335,12 +344,12 @@ function str_eval_jac_g(rowid, colid, x0 , x1, mode, e_rowidx, e_colptr, e_value
     else
         @assert false mode
     end
-    # @show "end str_eval_jac_g"
+    @show "end str_eval_jac_g"
 end
 
 
 function str_eval_h(rowid, colid, x0, x1, obj_factor, lambda, mode, rowidx, colptr, values)
-    # @show "str_eval_h", rowid, colid, mode, length(x0), length(x1),obj_factor, length(lambda), length(rowidx), length(colptr), length(values)
+    @show "str_eval_h", rowid, colid, mode, length(x0), length(x1),obj_factor, length(lambda), length(rowidx), length(colptr), length(values)
     @assert rowid<num_scenarios(m)+1 && colid < num_scenarios(m) + 1
     low = min(rowid, colid)
     high = max(rowid, colid)
@@ -348,8 +357,8 @@ function str_eval_h(rowid, colid, x0, x1, obj_factor, lambda, mode, rowidx, colp
         e = get_nlp_evaluator(high)
         (h_J, h_I) = MathProgBase.hesslag_structure(e) #reverse I, J as we want upper trangular matrix
         col_var_idx, row_var_idx = get_h_var_idx(rowid, colid)
-        # @show h_I
-        # @show h_J
+        @show h_I
+        @show h_J
 
         new_h_I = Vector{Int}()
         new_h_J = Vector{Int}()
@@ -361,19 +370,23 @@ function str_eval_h(rowid, colid, x0, x1, obj_factor, lambda, mode, rowidx, colp
                 push!(new_h_J,col_var_idx[jj])
             end
         end
-        # @show new_h_I
-        # @show new_h_J
+        @show new_h_I
+        @show new_h_J
 
         laghess = sparse(new_h_I,new_h_J, ones(Float64,length(new_h_I)))
-        # @show length(laghess.nzval)
+        @show length(laghess.nzval)
         return length(laghess.nzval)
     elseif(mode == :Values)
         e = get_nlp_evaluator(high)
         (h_J, h_I) = MathProgBase.hesslag_structure(e)
         h = Vector{Float64}(length(h_I))
+        @show h_I
+        @show h_J
+        @show h
         MathProgBase.eval_hesslag(e,h,build_x(high,x0,x1),obj_factor,lambda)
         col_var_idx,row_var_idx = get_h_var_idx(rowid, colid)
-        
+        @show col_var_idx
+        @show row_var_idx
         new_h_I = Vector{Int}()
         new_h_J = Vector{Int}()
         new_h = Vector{Float64}()
@@ -387,16 +400,16 @@ function str_eval_h(rowid, colid, x0, x1, obj_factor, lambda, mode, rowidx, colp
                 push!(new_h, vv)
             end
         end
-        # @show new_h_I
-        # @show new_h_J
-        # @show new_h
+        @show new_h_I
+        @show new_h_J
+        @show new_h
         
         if(rowid !=0 && colid == 0)  #root diag contrib.
             # @show "root contrib", rowid, colid
             (h0_I,h0_J) = MathProgBase.hesslag_structure(get_nlp_evaluator(0))
-            str_laghess = sparse([new_h_I;h0_I], [new_h_J;h0_J], [new_h;zeros(Float64,length(h0_I))], length(row_var_idx), length(col_var_idx), keepzeros=true)
-            # @show str_laghess.m, str_laghess.n, length(str_laghess.nzval)
-            # @show str_laghess
+            str_laghess = sparse([new_h_I;h0_I], [new_h_J;h0_J], [new_h;zeros(Float64,length(h0_I))], get_numvar(0),get_numvar(0), keepzeros=true)
+            @show str_laghess.m, str_laghess.n, length(str_laghess.nzval)
+            @show str_laghess
             
             array_copy(str_laghess.rowval,1,rowidx,1,length(str_laghess.rowval))
             array_copy(str_laghess.colptr,1,colptr,1,length(str_laghess.colptr))
@@ -404,9 +417,9 @@ function str_eval_h(rowid, colid, x0, x1, obj_factor, lambda, mode, rowidx, colp
 
             # @show str_laghess.nzval
         else
-            str_laghess = sparse(new_h_I, new_h_J, new_h, length(row_var_idx), length(col_var_idx), keepzeros=true)
-            # @show str_laghess.m, str_laghess.n, length(str_laghess.nzval)
-            # @show str_laghess
+            str_laghess = sparse(new_h_I, new_h_J, new_h, get_numvar(colid), get_numvar(rowid), keepzeros=true)
+            @show str_laghess.m, str_laghess.n, length(str_laghess.nzval)
+            @show str_laghess
             
             array_copy(str_laghess.rowval,1,rowidx,1,length(str_laghess.rowval))
             array_copy(str_laghess.colptr,1,colptr,1,length(str_laghess.colptr))
@@ -419,7 +432,7 @@ function str_eval_h(rowid, colid, x0, x1, obj_factor, lambda, mode, rowidx, colp
     else
         @assert false mode
     end 
-    # @show "end str_eval_h"
+    @show "end str_eval_h"
 end
 
 
