@@ -158,10 +158,14 @@ function SparseMatrix.sparse(I,J,V, M, N;keepzeros=false)
         full = sparse(I,J,ones(Float64,length(I)),M,N)
         actual = sparse(I,J,V,M,N)
         fill!(full.nzval,0.0)
-        for i in eachindex(actual)
-            full[i[1],i[2]] = actual[i]
-        end
 
+        @show full
+        for c = 1:N
+            crange = nzrange(actual,c)
+            full.nzval[crange] = actual.nzval[crange] 
+        end
+        @show full
+        
         return full
     end
 end
