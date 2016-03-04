@@ -15,7 +15,7 @@ m = StochasticModel(numScen)
 setObjective(m, :Min, x*x + y)
 
 for i in 1:numScen
-    bl = StochasticBlock(m)
+    bl = StochasticModel(parent=m)
     @defVar(bl, w >= 0)
     @addConstraint(bl, w - x - y <= 1)
     @setObjective(bl, Min, w*w + w)

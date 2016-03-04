@@ -12,15 +12,13 @@ function JuMP.parseNLExpr_runtime(m::JuMP.Model, x::JuMP.Variable, tape, parent:
     if x.m === m
         push!(tape, JuMP.NodeData(ReverseDiffSparse.VARIABLE, x.col, parent))
     else
-        # @show "othervars"
-        # others = getStochastic(m).othervars
         othermap = getStochastic(m).othermap
-        # push!(others, x)
         if haskey(othermap, x)
             newx = othermap[x]
         else
             newx = JuMP.Variable(m,JuMP.getLower(x),JuMP.getUpper(x),:Cont, JuMP.getName(x))
-            othermap[x] = newx
+            othermap[x] = newx  #parent -> dummy parent in the child node
+            @show x.col, "-->",newx.col
         end
         push!(tape, JuMP.NodeData(ReverseDiffSparse.VARIABLE, newx.col, parent))
     end

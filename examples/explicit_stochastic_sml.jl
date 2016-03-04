@@ -8,7 +8,7 @@ m = StochasticModel()
 
 for n1 in NODES
     if PARENT[n1] == 0
-        sub = StochasticBlock(m, n1)
+        sub = StochasticModel(parent=m)
         @defStochasticVar(sub, xh1[ASSETS] >= 0)
         @defStochasticVar(sub, xb1[ASSETS] >= 0)
         @defStochasticVar(sub, xs1[ASSETS] >= 0)
@@ -20,7 +20,7 @@ for n1 in NODES
 
     for n2 in NODES
         if PARENT[n2] == n1
-            sub = StochasticBlock(n1, n2)
+            sub = StochasticModel(parent=m)
             @defStochasticVar(sub, xh2[ASSETS] >= 0)
             @defStochasticVar(sub, xb2[ASSETS] >= 0)
             @defStochasticVar(sub, xs2[ASSETS] >= 0)
@@ -41,4 +41,3 @@ end
 # Block(parent::Union(Model,Block), index) constructor
 # should do name mangling so that variables get associated with their block
 # add function block(parent, child1, child2, ...) that returns reference to subproblem. This should then be passable as index to subproblem variables
-
