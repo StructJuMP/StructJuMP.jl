@@ -1,6 +1,6 @@
-using StochJuMP
+using StructJuMP
 
-m = StochasticModel()
+m = StructuredModel()
 
 factories = 1:3
 centers = 1:5
@@ -40,7 +40,7 @@ for i in factories
 end
 
 for (s, elem) in enumerate(scenarios)
-    bl = StochasticModel(parent=m)
+    bl = StructuredModel(parent=m)
     @defStochasticVar(bl, 0 <= salesw[i=centers] <= demand[i,s])
     @defStochasticVar(bl, wastew[centers] >= 0)
     @setObjective(bl, Max, sum{price*prob[s]*salesw[j], j=centers} - sum{wastecost*prob[s]*wastew[j], j=centers})

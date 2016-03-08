@@ -1,5 +1,5 @@
 using JuMP
-using StochJuMP
+using StructJuMP
 using CPLEX
 using ECOS
 using FactCheck
@@ -11,7 +11,7 @@ socp_solver = ECOS.ECOSSolver()
 
 facts("[Benders] Empty scenario test") do
 
-    m = StochasticModel(0)
+    m = StructuredModel(0)
     @defVar(m, x, Int)
     @addConstraint(m, x <= 4)
     @setObjective(m, :Min, -5*x)
@@ -26,14 +26,14 @@ end
 facts("[Benders] Infeasible problem test") do
 
     numScen = 1
-    m = StochasticModel(numScen)
+    m = StructuredModel(numScen)
 
     @defVar(m, x, Int)
 
     @addConstraint(m, x <= 1)
     @setObjective(m, :Min, -5*x)
 
-    bl = StochasticModel(parent=m)
+    bl = StructuredModel(parent=m)
     @defVar(bl, y1 >= 2)
     @defVar(bl, y2 <= 2)
     @addConstraint(bl, x >= y1)
@@ -49,14 +49,14 @@ end
 facts("[Benders] Infeasibility cut execution test #1") do
 
     numScen = 1
-    m = StochasticModel(numScen)
+    m = StructuredModel(numScen)
 
     @defVar(m, x, Int)
 
     @addConstraint(m, x <= 4)
     @setObjective(m, :Min, -5*x)
 
-    bl = StochasticModel(parent=m)
+    bl = StructuredModel(parent=m)
     @defVar(bl, y1 >= 0)
     @defVar(bl, y2 <= 2)
     @addConstraint(bl, x <= y1)
@@ -73,14 +73,14 @@ end
 facts("[Benders] Optimality cut execution test #1") do
 
     numScen = 1
-    m = StochasticModel(numScen)
+    m = StructuredModel(numScen)
 
     @defVar(m, x, Int)
 
     @addConstraint(m, x <= 4)
     @setObjective(m, :Min, -5*x)
 
-    bl = StochasticModel(parent=m)
+    bl = StructuredModel(parent=m)
     @defVar(bl, y1 >= 2)
     @defVar(bl, y2 <= 4)
     @addConstraint(bl, x <= y1)

@@ -4,7 +4,7 @@ function JuMP.parseNLExpr_runtime(m::JuMP.Model, x::JuMP.Variable, tape, parent:
     if x.m === m
         push!(tape, JuMP.NodeData(ReverseDiffSparse.VARIABLE, x.col, parent))
     else
-        others = getStochastic(m).othervars
+        others = getStructure(m).othervars
         push!(others, x)
         push!(tape, JuMP.NodeData(ReverseDiffSparse.EXTRA, length(others), parent))
     end
