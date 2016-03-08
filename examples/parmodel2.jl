@@ -1,12 +1,12 @@
-using StochJuMP, JuMP
+using StructJuMP, JuMP
 
-firststage = StochasticModel()
+firststage = StructuredModel()
 @defVar(firststage, x[1:2])
 @addConstraint(firststage, sum(x) == 100)
 @setNLObjective(firststage, Min, x[1]^2 + x[2]^2)
 
 for scen in 1:2
-    bl = StochasticModel(parent=firststage)
+    bl = StructuredModel(parent=firststage)
     @defVar(bl, y[1:2])
     @addConstraint(bl, x[3-scen] + sum(y) ≥  0)
     @addConstraint(bl, x[3-scen] + sum(y) ≤ 50)

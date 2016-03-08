@@ -1,6 +1,6 @@
-using StochJuMP
+using StructJuMP
 
-m = StochasticModel()
+m = StructuredModel()
 
 @defStochasticVar(m, xh0[ASSETS] >= 0)
 @defStochasticVar(m, xb0[ASSETS] >= 0)
@@ -8,7 +8,7 @@ m = StochasticModel()
 
 for n1 in NODES
     if PARENT[n1] == 0
-        sub = StochasticModel(parent=m)
+        sub = StructuredModel(parent=m)
         @defStochasticVar(sub, xh1[ASSETS] >= 0)
         @defStochasticVar(sub, xb1[ASSETS] >= 0)
         @defStochasticVar(sub, xs1[ASSETS] >= 0)
@@ -20,7 +20,7 @@ for n1 in NODES
 
     for n2 in NODES
         if PARENT[n2] == n1
-            sub = StochasticModel(parent=m)
+            sub = StructuredModel(parent=m)
             @defStochasticVar(sub, xh2[ASSETS] >= 0)
             @defStochasticVar(sub, xb2[ASSETS] >= 0)
             @defStochasticVar(sub, xs2[ASSETS] >= 0)

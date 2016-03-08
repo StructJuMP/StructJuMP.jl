@@ -1,6 +1,6 @@
-using StochJuMP
+using StructJuMP
 
-m = StochasticModel()
+m = StructuredModel()
 
 n = 10
 @defVar(m, x[1:n] >= 0)
@@ -12,11 +12,11 @@ end
 p = 3
 q = 2
 for s = 1:p
-    bl = StochasticModel(parent=m)
+    bl = StructuredModel(parent=m)
     @defVar(bl, z[1:n] >= 0)
     @addConstraint(bl, x + sum{z[i], i=1:n} == 1)
     for t = 1:q
-        bll = StochasticModel(parent=bl)
+        bll = StructuredModel(parent=bl)
         @defVar(bll, w[1:n] >= 0)
         @addConstraint(bll, sum{w[i], i=1:n; iseven(i)} == 1)
         par = parent(bll)
