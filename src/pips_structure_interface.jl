@@ -14,9 +14,21 @@ export solve
 
 
 global m
+
 #########################
 # Helper 
 #########################
+function default_init_x0(id,x0)
+    mm = get_model(id)
+    nvar = get_numvar(id)
+    @assert length(x0) == nvar
+
+    for i=1:nvar
+        x0[i] = getValue(Variable(mm,i))
+        isnan(x0[i])?x0[i]=1.0:nothing
+    end
+end   
+
 function get_model(id)
     return id==0?m:getchildren(m)[id]
 end
@@ -169,9 +181,8 @@ end
 ###############
 # Generatic linking code
 ###############
-function str_init_x0(id,x0)
-    fill!(x0,1.0)
-end
+str_init_x0(id,x0) = default_init_x0(id,x0)
+
 
 function str_prob_info(id,mode,clb,cub,rlb,rub)
     # @show id
