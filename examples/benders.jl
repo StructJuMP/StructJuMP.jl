@@ -7,7 +7,7 @@ end
 # Create sparse matrix A with all parent variables. Removes them from linear constraints afterwards.
 # Once created, should be able to do A*x, where x is the solution to the master problem.
 function createMasterMat(m::Model)
-    stoch = getStochastic(m)
+    stoch = getStructure(m)
     parent = stoch.parent
     for (nrow,con) in enumerate(m.linconstr)
         aff = con.terms
@@ -42,7 +42,7 @@ function prepProblemBounds(m::Model)
     rowub = fill(+Inf, numRows)
 
 
-    stoch = getStochastic(m)
+    stoch = getStructure(m)
     if stoch.parent != nothing && !isempty(stoch.parent.colVal)
         offset = stoch.parentMat * parent.colVal
         for c in 1:numRows
@@ -59,7 +59,7 @@ end
 
 # Solve stochastic LP with Bender's decomposition
 function solveStochastic(m::Model)
-    stoch = getStochastic(m)
+    stoch = getStructure(m)
     @assert stoch.parent == nothing # make sure we're at the master problem
 
     defVar(m, θ) # hopefully this name doesn't conflict...

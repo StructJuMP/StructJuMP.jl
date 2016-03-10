@@ -1,4 +1,4 @@
-module StochJuMP
+module StructJuMP
 
 # import MPI
 import JuMP # To reexport, should be using (not import)
@@ -6,14 +6,14 @@ import MathProgBase
 import MathProgBase.MathProgSolverInterface
 import ReverseDiffSparse
 
-export StochasticModel, getStochastic, getparent, getchildren, getProcIdxSet,
+export StructuredModel, getStructure, getparent, getchildren, getProcIdxSet,
        num_scenarios, @second_stage
 
 # ---------------
-# StochasticData
+# StructureData
 # ---------------
 
-type StochasticData
+type StructureData
     probability::Vector{Float64}
     children::Vector{JuMP.Model}
     parent
@@ -26,14 +26,14 @@ default_probability(m::JuMP.Model) = 1 / num_scenarios(m)
 default_probability(::Void) = 1.0
 
 # ---------------
-# StochasticModel
+# StructuredModel
 # ---------------
 
 # Constructor with the number of scenarios
-function StochasticModel(;solver=JuMP.UnsetSolver(), parent=nothing, num_scenarios::Int=0, prob::Float64=default_probability(parent))
+function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, num_scenarios::Int=0, prob::Float64=default_probability(parent))
     m = JuMP.Model(solver=solver)
     if parent !== nothing
-        stoch = getStochastic(parent)
+        stoch = getStructure(parent)
         push!(stoch.children, m)
         push!(stoch.probability, prob)
     end
@@ -45,11 +45,11 @@ end
 # Get functions
 # -------------
 
-getStochastic(m::JuMP.Model)  = m.ext[:Stochastic]
-getparent(m::JuMP.Model)      = getStochastic(m).parent
-getchildren(m::JuMP.Model)    = getStochastic(m).children
-getprobability(m::JuMP.Model) = getStochastic(m).probability
-num_scenarios(m::JuMP.Model)  = getStochastic(m).num_scen
+getStructure(m::JuMP.Model)  = m.ext[:Stochastic]
+getparent(m::JuMP.Model)      = getStructure(m).parent
+getchildren(m::JuMP.Model)    = getStructure(m).children
+getprobability(m::JuMP.Model) = getStructure(m).probability
+num_scenarios(m::JuMP.Model)  = getStructure(m).num_scen
 
 function getProcIdxSet(numScens::Integer)
     mysize = 1;
