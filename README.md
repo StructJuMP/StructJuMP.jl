@@ -6,7 +6,7 @@ An example of the StructJuMP.jl package reads:
 using StructJuMP
 
 numScen = 2
-m = StructuredModel(numScen)
+m = StructuredModel(num_scenarios=numScen)
 
 @defVar(m, 0 <= x <= 1)
 @defVar(m, 0 <= y <= 1)
