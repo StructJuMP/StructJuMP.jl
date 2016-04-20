@@ -37,7 +37,7 @@ function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, num_scenari
         push!(stoch.children, m)
         push!(stoch.probability, prob)
     end
-    m.ext[:Stochastic] = StochasticData(Float64[], JuMP.Model[], parent, num_scenarios, Dict{JuMP.Variable,JuMP.Variable}())
+    m.ext[:Stochastic] = StructureData(Float64[], JuMP.Model[], parent, num_scenarios, Dict{JuMP.Variable,JuMP.Variable}())
     m
 end
 
