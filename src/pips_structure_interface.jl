@@ -15,8 +15,7 @@ type StructJuMPModel <: ModelInterface
     internalModel::JuMP.Model
     status::Int
     id_con_idx_map::Dict{Int,Pair{Dict{Int,Int},Dict{Int,Int}}}  #eq, ieq, jump->actual used
-    # ieq_idx::Dict{Int,Int}  #jump-> actual used
-
+    
     get_num_scen::Function
     get_sense::Function
     get_status::Function
