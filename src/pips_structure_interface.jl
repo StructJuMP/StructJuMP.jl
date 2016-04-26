@@ -75,6 +75,7 @@ type StructJuMPModel <: ModelInterface
 
 
         instance.str_init_x0 = function(id,x0)
+            assert(id in getScenarioIds(instance.internalModel))
             mm = get_model(instance.internalModel,id)
             nvar = get_numvars(instance.internalModel,id)
             @assert length(x0) == nvar
@@ -160,16 +161,16 @@ type StructJuMPModel <: ModelInterface
         instance.str_eval_jac_g = function(rowid, colid, x0 , x1, mode, e_rowidx, e_colptr, e_values, i_rowidx, i_colptr, i_values)
             # @show "str_eval_jac_g", rowid, colid, mode
             m = instance.internalModel
-            @assert rowid<num_scenarios(m)+1 && colid < num_scenarios(m) + 1
+            @assert rowid<=num_scenarios(m) && colid <= num_scenarios(m)
             @assert rowid >= colid
             if(mode == :Structure)
                 e = get_nlp_evaluator(m,rowid)
                 (jac_I,jac_J) = MathProgBase.jac_structure(e)
-                @show jac_I
-                @show jac_J
+                # @show jac_I
+                # @show jac_J
                 (eq_idx, ieq_idx) = instance.id_con_idx_map[rowid]
                 var_idx = get_jac_col_var_idx(m,rowid,colid)
-                @show var_idx
+                # @show var_idx
 
                 eq_jac_I = Vector{Int}() 
                 ieq_jac_I = Vector{Int}()
@@ -273,7 +274,7 @@ type StructJuMPModel <: ModelInterface
         instance.str_eval_h = function(rowid, colid, x0, x1, obj_factor, lambda, mode, rowidx, colptr, values)
             # @show "str_eval_h", rowid, colid, mode, length(x0), length(x1),obj_factor, length(lambda), length(rowidx), length(colptr), length(values)
             m = instance.internalModel
-            @assert rowid<num_scenarios(m)+1 && colid < num_scenarios(m) + 1
+            @assert rowid<=num_scenarios(m) && colid <=num_scenarios(m)
             low = min(rowid, colid)
             high = max(rowid, colid)
             if(mode == :Structure)
@@ -384,7 +385,7 @@ end
 
 function init_constraints_idx_map(m,map)
     assert(length(map) == 0)
-    for id = 0:num_scenarios(m)
+    for id in getScenarioIds(m)
         eq_idx = Dict{Int,Int}()
         ieq_idx = Dict{Int,Int}()
         push!(map,id=>Pair(eq_idx,ieq_idx))
@@ -400,6 +401,9 @@ function init_constraints_idx_map(m,map)
 end
 
 function get_nlp_evaluator(m,id)
+    # @show id,getScenarioIds(m)
+    # @show getProcIdxSet(m)
+    # assert(id == 0 || id in getProcIdxSet(m))
     e = JuMPNLPEvaluator(get_model(m,id))
     MathProgBase.initialize(e,[:Grad,:Jac,:Hess])
     return e
@@ -517,15 +521,17 @@ function array_copy(src,os, dest, od, n)
 end
 
 function write_mat_to_file(filename,mat)
-    filename = string("./mat/",filename)
-    pre_filename = string(filename,"_0")
-    i = 0
-    while isfile(pre_filename)
-        i += 1
-        pre_filename = string(filename,"_",i)
+    if(false)
+        filename = string("./mat/",filename)
+        pre_filename = string(filename,"_0")
+        i = 0
+        while isfile(pre_filename)
+            i += 1
+            pre_filename = string(filename,"_",i)
+        end
+        @show "output : ", pre_filename
+        writedlm(pre_filename,mat,",")
     end
-    @show "output : ", pre_filename
-    writedlm(pre_filename,mat,",")
 end
 
 function convert_to_c_idx(indicies)

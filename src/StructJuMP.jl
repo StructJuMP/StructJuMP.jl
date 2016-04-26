@@ -1,13 +1,14 @@
 module StructJuMP
 
-# import MPI
+import MPI
 import JuMP # To reexport, should be using (not import)
 import MathProgBase
 import MathProgBase.MathProgSolverInterface
 import ReverseDiffSparse
 
 export StructuredModel, getStructure, getparent, getchildren, getProcIdxSet,
-       num_scenarios, @second_stage
+       num_scenarios, @second_stage,
+       getScenarioIds
 
 # ---------------
 # StructureData
@@ -50,6 +51,27 @@ getparent(m::JuMP.Model)      = getStructure(m).parent
 getchildren(m::JuMP.Model)    = getStructure(m).children
 getprobability(m::JuMP.Model) = getStructure(m).probability
 num_scenarios(m::JuMP.Model)  = getStructure(m).num_scen
+
+
+function getMyRank()
+    myrank = 0;
+    mysize = 1;
+    if isdefined(:MPI)==true && MPI.Initialized()==true
+        comm = MPI.COMM_WORLD
+        mysize = MPI.Comm_size(comm)
+        myrank = MPI.Comm_rank(comm)
+    end
+    return myrank,mysize
+end
+
+function getScenarioIds(m::JuMP.Model)
+    myrank,mysize = getMyRank()
+    numScens = num_scenarios(m)
+    d = div(numScens,mysize)
+    s = myrank * d + 1
+    e = myrank == (mysize-1)? numScens:s+d-1
+    ids = [0;s:e]
+end
 
 function getProcIdxSet(numScens::Integer)
     mysize = 1;
