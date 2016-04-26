@@ -21,7 +21,5 @@ end
 
 
 ParPipsInterface.solve(m)
-
 @show "done"
 
-@show getScenarioIds(m)
