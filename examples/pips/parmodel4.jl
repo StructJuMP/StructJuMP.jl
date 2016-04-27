@@ -1,4 +1,4 @@
-include("../src/pips_structure_interface.jl")
+include("../../src/pips_structure_interface.jl")
 #an example model
 
 using ParPipsInterface
