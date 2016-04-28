@@ -1,5 +1,5 @@
 try
-    include(ENV["PIPS_NLP_PAR_JULIA_INTERFACE"])
+    include(get(ENV,"PIPS_NLP_PAR_JULIA_INTERFACE",""))
 catch err
     if(isa(err, ErrorException))
       warn("Could not include PIPS-NLP Julia interface file. Please setup ENV variable 'PIPS_NLP_PAR_JULIA_INTERFACE' to the location of this file, usually in PIPS repo at PIPS-NLP/JuliaInterface/ParPipsNlp.jl")
