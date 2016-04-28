@@ -86,7 +86,7 @@ type StructJuMPModel <: ModelInterface
             mm = get_model(instance.internalModel,id)
             nvar = get_numvars(instance.internalModel,id)
             @assert length(x0) == nvar
-
+            
             for i=1:nvar
                 x0[i] = getValue(Variable(mm,i))
                 isnan(x0[i])?x0[i]=1.0:nothing
@@ -307,7 +307,7 @@ type StructJuMPModel <: ModelInterface
                 # @show new_h_J
 
                 laghess = sparse(new_h_I,new_h_J, ones(Float64,length(new_h_I)))
-                @show length(laghess.nzval)
+                # @show length(laghess.nzval)
                 return length(laghess.nzval)
             elseif(mode == :Values)
                 e = get_nlp_evaluator(m,high)
@@ -351,7 +351,7 @@ type StructJuMPModel <: ModelInterface
                     array_copy(str_laghess.colptr,1,colptr,1,length(str_laghess.colptr))
                     array_copy(str_laghess.nzval, 1,values,1,length(str_laghess.nzval))
                     
-                    @show rowidx,colptr,values
+                    # @show rowidx,colptr,values
                     # @show str_laghess.nzval
                 else
                     str_laghess = sparse(new_h_I, new_h_J, new_h, get_numvars(m,colid), get_numvars(m,rowid), keepzeros=true)
@@ -359,7 +359,7 @@ type StructJuMPModel <: ModelInterface
                     array_copy(str_laghess.rowval,1,rowidx,1,length(str_laghess.rowval))
                     array_copy(str_laghess.colptr,1,colptr,1,length(str_laghess.colptr))
                     array_copy(str_laghess.nzval, 1,values,1,length(str_laghess.nzval))
-                    @show rowidx,colptr,values
+                    # @show rowidx,colptr,values
                 end
                 
                 filename = string("hess_",rowid,"_",colid)
@@ -555,26 +555,25 @@ end
 # Linking with PIPS Julia Structure interface
 ######
 function createStructJuMPPipsNlpProblem(model::JuMP.Model)
-    @show "createStructJuMPPipsNlpProblem"
+    # @show "createStructJuMPPipsNlpProblem"
     comm = MPI.COMM_WORLD
-    @show "[$(MPI.Comm_rank(comm))/$(MPI.Comm_size(comm))] create problem "
-    @show comm
-
+    # @show "[$(MPI.Comm_rank(comm))/$(MPI.Comm_size(comm))] create problem "
+    
     prob = createProblemStruct(comm, StructJuMPModel(model,0))
-    @show "end createStructJuMPPipsNlpProblem"
+    # @show "end createStructJuMPPipsNlpProblem"
     return prob
 end
 
 function solveStructJuMPPipsNlpProblem(prob)
-    @show "solveStructJuMPPipsNlpProblem"
-    @show prob
+    # @show "solveStructJuMPPipsNlpProblem"
+    # @show prob
     ret = solveProblemStruct(prob)
-    @show "end solveStructJuMPPipsNlpProblem"
+    # @show "end solveStructJuMPPipsNlpProblem"
     return ret
 end
 
 function solve(model)
-    @show "solve"
+    # @show "solve"
     global m = model
     MPI.Init()
 
