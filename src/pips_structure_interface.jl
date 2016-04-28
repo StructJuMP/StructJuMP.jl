@@ -281,6 +281,8 @@ type StructJuMPModel <: ModelInterface
                 e = get_nlp_evaluator(m,high)
                 (h_J, h_I) = MathProgBase.hesslag_structure(e) #reverse I, J as we want upper trangular matrix
                 col_var_idx, row_var_idx = get_h_var_idx(m,rowid, colid)
+                # @show col_var_idx
+                # @show row_var_idx
                 # @show h_I
                 # @show h_J
 
@@ -298,19 +300,22 @@ type StructJuMPModel <: ModelInterface
                 # @show new_h_J
 
                 laghess = sparse(new_h_I,new_h_J, ones(Float64,length(new_h_I)))
-                # @show length(laghess.nzval)
+                @show length(laghess.nzval)
                 return length(laghess.nzval)
             elseif(mode == :Values)
                 e = get_nlp_evaluator(m,high)
                 (h_J, h_I) = MathProgBase.hesslag_structure(e)
                 h = Vector{Float64}(length(h_I))
-                # @show h_I
-                # @show h_J
-                # @show h
-                MathProgBase.eval_hesslag(e,h,build_x(m,high,x0,x1),obj_factor,lambda)
+                x = build_x(m,high,x0,x1)
+                # @show x,lambda
+                MathProgBase.eval_hesslag(e,h,x,obj_factor,lambda)
                 col_var_idx,row_var_idx = get_h_var_idx(m,rowid, colid)
                 # @show col_var_idx
                 # @show row_var_idx
+                # @show h_I
+                # @show h_J
+                # @show h
+
                 new_h_I = Vector{Int}()
                 new_h_J = Vector{Int}()
                 new_h = Vector{Float64}()
@@ -338,17 +343,16 @@ type StructJuMPModel <: ModelInterface
                     array_copy(str_laghess.rowval,1,rowidx,1,length(str_laghess.rowval))
                     array_copy(str_laghess.colptr,1,colptr,1,length(str_laghess.colptr))
                     array_copy(str_laghess.nzval, 1,values,1,length(str_laghess.nzval))
-
+                    
+                    @show rowidx,colptr,values
                     # @show str_laghess.nzval
                 else
                     str_laghess = sparse(new_h_I, new_h_J, new_h, get_numvars(m,colid), get_numvars(m,rowid), keepzeros=true)
-                    # @show str_laghess.m, str_laghess.n, length(str_laghess.nzval)
-                    # @show str_laghess
                     
                     array_copy(str_laghess.rowval,1,rowidx,1,length(str_laghess.rowval))
                     array_copy(str_laghess.colptr,1,colptr,1,length(str_laghess.colptr))
                     array_copy(str_laghess.nzval, 1,values,1,length(str_laghess.nzval))
-                    # @show str_laghess.nzval
+                    @show rowidx,colptr,values
                 end
                 
                 filename = string("hess_",rowid,"_",colid)
