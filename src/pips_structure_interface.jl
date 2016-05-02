@@ -51,7 +51,7 @@ type StructJuMPModel <: ModelInterface
     str_init_x0::Function
     str_prob_info::Function
     str_eval_f::Function
-    str_eval_g::Function
+   str_eval_g::Function
     str_eval_grad_f::Function
     str_eval_jac_g::Function
     str_eval_h::Function
@@ -637,11 +637,9 @@ function solve(model)
     modeling_time = show_time(prob.model)
     solver_time = solver_total - modeling_time
 
-    @printf "initiation time - %.3f s\n" prob.model.t_init_idx
-    @printf " modelling time - %.3f s\n" modeling_time 
-    @printf "    solver time - %.3f s\n" solver_time 
-    @printf "     total time - %.3f s\n" t_total 
-
+    if(0==MPI.Comm_rank(MPI.COMM_WORLD)) 
+      @printf "Total time %.4f (initialization=%.3f modelling=%.3f solver=%.3f) (in sec)\n" t_total prob.model.t_init_idx modeling_time solver_time
+    end
     MPI.Finalize()
 end
 
