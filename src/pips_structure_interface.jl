@@ -342,18 +342,19 @@ type StructJuMPModel <: ModelInterface
                 return length(laghess.nzval)
             elseif(mode == :Values)
                 e = get_nlp_evaluator(m,high)
-                (h_J, h_I) = MathProgBase.hesslag_structure(e)
+                # @show high,x0,x1
+                (h_J, h_I) = MathProgBase.hesslag_structure(e)  #take upper
                 h = Vector{Float64}(length(h_I))
                 x = build_x(m,high,x0,x1)
                 # @show x,lambda
                 MathProgBase.eval_hesslag(e,h,x,obj_factor,lambda)
                 col_var_idx,row_var_idx = get_h_var_idx(m,rowid, colid)
-                # @show col_var_idx
-                # @show row_var_idx
                 # @show h_I
                 # @show h_J
                 # @show h
-
+                # @show col_var_idx
+                # @show row_var_idx
+                
                 new_h_I = Vector{Int}()
                 new_h_J = Vector{Int}()
                 new_h = Vector{Float64}()
@@ -362,8 +363,15 @@ type StructJuMPModel <: ModelInterface
                     jj = h_J[i]
                     vv = h[i]
                     if haskey(col_var_idx,jj) && haskey(row_var_idx,ii)
-                        push!(new_h_I,row_var_idx[ii])
-                        push!(new_h_J,col_var_idx[jj])
+                        new_ii = row_var_idx[ii]
+                        new_jj = col_var_idx[jj]
+                        if new_ii < new_jj
+                            push!(new_h_I,new_ii)
+                            push!(new_h_J,new_jj)
+                        else
+                            push!(new_h_I,new_jj)
+                            push!(new_h_J,new_ii)
+                        end
                         push!(new_h, vv)
                     end
                 end
@@ -373,7 +381,7 @@ type StructJuMPModel <: ModelInterface
                 
                 if(rowid !=0 && colid == 0)  #root diag contrib.
                     # @show "root contrib", rowid, colid
-                    (h0_I,h0_J) = MathProgBase.hesslag_structure(get_nlp_evaluator(m,0))
+                    (h0_J,h0_I) = MathProgBase.hesslag_structure(get_nlp_evaluator(m,0))
                     # @show h0_I,h0_J
                     str_laghess = sparse([new_h_I;h0_I], [new_h_J;h0_J], [new_h;zeros(Float64,length(h0_I))], get_numvars(m,0),get_numvars(m,0), keepzeros=true)
                     # @show str_laghess.m, str_laghess.n, length(str_laghess.nzval)
@@ -532,12 +540,12 @@ function get_h_var_idx(m,rowid, colid)
     col_idx_map = Dict{Int,Int}() #dummy (jump) -> actual used
     row_idx_map = Dict{Int,Int}()
     if rowid == colid
-        nvar = get_numvars(m,rowid)
+        nvar = get_numvars(m,rowid) #need to place model variable in front of non model variable.
         for i = 1:nvar
             col_idx_map[i] = i
             row_idx_map[i] = i
         end
-    elseif rowid == 0  #border
+    elseif rowid == 0  && colid != 0 #border
         mm = get_model(m,colid)
         othermap = getStructure(mm).othermap
         for p in othermap
@@ -548,7 +556,7 @@ function get_h_var_idx(m,rowid, colid)
         for i = 1:get_numvars(m,colid)
             row_idx_map[i] = i
         end
-    elseif colid == 0 #root contrib.
+    elseif colid == 0 && rowid != 0 #root contrib.
         mm = get_model(m,rowid)
         othermap = getStructure(mm).othermap
         for p in othermap
