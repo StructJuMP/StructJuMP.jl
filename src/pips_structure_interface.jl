@@ -31,6 +31,7 @@ type StructJuMPModel <: ModelInterface
     t_eval_grad_f::Float64
     t_eval_jac_g::Float64
     t_eval_h::Float64
+    t_write_solution::Float64
     
     get_num_scen::Function
     get_sense::Function
@@ -55,12 +56,13 @@ type StructJuMPModel <: ModelInterface
     str_eval_grad_f::Function
     str_eval_jac_g::Function
     str_eval_h::Function
+    str_write_solution::Function
 
 
 
     function StructJuMPModel(model::JuMP.Model, status::Int)
         instance = new(model,status,Dict{Int,Pair{Dict{Int,Int},Dict{Int,Int}}}()
-            ,0,0,0,0,0,0,0,0
+            ,0,0,0,0,0,0,0,0,0
             )
         tic()
         init_constraints_idx_map(model,instance.id_con_idx_map)
@@ -372,6 +374,7 @@ type StructJuMPModel <: ModelInterface
                 if(rowid !=0 && colid == 0)  #root diag contrib.
                     # @show "root contrib", rowid, colid
                     (h0_I,h0_J) = MathProgBase.hesslag_structure(get_nlp_evaluator(m,0))
+                    # @show h0_I,h0_J
                     str_laghess = sparse([new_h_I;h0_I], [new_h_J;h0_J], [new_h;zeros(Float64,length(h0_I))], get_numvars(m,0),get_numvars(m,0), keepzeros=true)
                     # @show str_laghess.m, str_laghess.n, length(str_laghess.nzval)
                     # @show str_laghess
@@ -403,6 +406,24 @@ type StructJuMPModel <: ModelInterface
             instance.t_eval_h += toq()
         end
         
+        instance.str_write_solution = function(id, x, y_eq, y_ieq)
+            tic()
+            # @show id, x, y_eq, y_ieq
+            @assert id in getScenarioIds(instance.internalModel)
+            @assert length(x) == instance.get_num_cols(id)
+            @assert length(y_eq) == instance.get_num_eq_cons(id)
+            @assert length(y_ieq) == instance.get_num_ineq_cons(id)
+
+            #write back the primal to JuMP
+            mm = get_model(instance.internalModel,id)
+            for i = 1:length(x)
+                setValue(Variable(mm,i), x[i])
+            end
+
+
+            instance.t_write_solution += toq()
+        end
+        
         instance.t_init_idx += toq()
         return instance
     end
@@ -424,6 +445,15 @@ end
 function get_numcons(m,id)
     mm = get_model(m,id)
     return MathProgBase.numconstr(mm)
+end
+
+function get_var_value(m,id)
+    mm = get_model(m,id)
+    v = Float64[];
+    for i = 1:get_numvars(m,id)
+        v = [v;getValue(Variable(mm,i))]
+    end
+    return v
 end
 
 function init_constraints_idx_map(m,map)
@@ -591,7 +621,8 @@ function show_time(m::ModelInterface)
     m.t_eval_g+
     m.t_eval_grad_f+
     m.t_eval_jac_g+
-    m.t_eval_h;
+    m.t_eval_h +
+    m.t_write_solution;
     return t_model_time
 end
 
