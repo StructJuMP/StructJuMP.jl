@@ -52,7 +52,7 @@ type StructJuMPModel <: ModelInterface
     str_init_x0::Function
     str_prob_info::Function
     str_eval_f::Function
-   str_eval_g::Function
+    str_eval_g::Function
     str_eval_grad_f::Function
     str_eval_jac_g::Function
     str_eval_h::Function
@@ -129,7 +129,9 @@ type StructJuMPModel <: ModelInterface
                 array_copy(mm.colUpper, 1, cub, 1, nvar)
                 array_copy(mm.colLower, 1, clb, 1, nvar)
                 lb,ub = getConstraintBounds(mm)
+                # @show lb, ub
                 (eq_idx, ieq_idx) = instance.id_con_idx_map[id]
+                # @show eq_idx,ieq_idx
                 @assert length(lb) == length(ub)
                 @assert length(eq_idx) + length(ieq_idx) == length(lb)
                 num_eq = length(eq_idx)
@@ -312,96 +314,136 @@ type StructJuMPModel <: ModelInterface
             # @show "str_eval_h", rowid, colid, mode, length(x0), length(x1),obj_factor, length(lambda), length(rowidx), length(colptr), length(values)
             m = instance.internalModel
             @assert rowid<=num_scenarios(m) && colid <=num_scenarios(m)
-            low = min(rowid, colid)
-            high = max(rowid, colid)
             if(mode == :Structure)
-                e = get_nlp_evaluator(m,high)
-                (h_J, h_I) = MathProgBase.hesslag_structure(e) #reverse I, J as we want upper trangular matrix
-                col_var_idx, row_var_idx = get_h_var_idx(m,rowid, colid)
-                # @show col_var_idx
-                # @show row_var_idx
-                # @show h_I
-                # @show h_J
-
-                new_h_I = Vector{Int}()
-                new_h_J = Vector{Int}()
-                for i = 1:length(h_I)
-                    ii = h_I[i]
-                    jj = h_J[i]
-                    if haskey(col_var_idx,jj) && haskey(row_var_idx,ii)
-                        push!(new_h_I,row_var_idx[ii])
-                        push!(new_h_J,col_var_idx[jj])
+                if rowid == colid  #diagonal
+                    e = get_nlp_evaluator(m,rowid)
+                    (h_J,h_I) = MathProgBase.hesslag_structure(e) # upper trangular
+                    col_var_idx, row_var_idx = get_h_var_idx(m,rowid,colid)
+                    new_h_I = Vector{Int}()
+                    new_h_J = Vector{Int}()
+                    for i = 1:length(h_I)
+                        ii = h_I[i]
+                        jj = h_J[i]
+                        if haskey(col_var_idx,jj) && haskey(row_var_idx,ii)
+                            new_ii = row_var_idx[ii]
+                            new_jj = col_var_idx[jj]
+                            if new_ii < new_jj
+                                push!(new_h_I,new_ii)
+                                push!(new_h_J,new_jj)
+                            else
+                                push!(new_h_I,new_jj)
+                                push!(new_h_J,new_ii)
+                            end
+                        end
                     end
-                end
-                # @show new_h_I
-                # @show new_h_J
-
-                laghess = sparse(new_h_I,new_h_J, ones(Float64,length(new_h_I)))
-                # @show length(laghess.nzval)
-                instance.t_eval_h += toq()
-                return length(laghess.nzval)
-            elseif(mode == :Values)
-                e = get_nlp_evaluator(m,high)
-                # @show high,x0,x1
-                (h_J, h_I) = MathProgBase.hesslag_structure(e)  #take upper
-                h = Vector{Float64}(length(h_I))
-                x = build_x(m,high,x0,x1)
-                # @show x,lambda
-                MathProgBase.eval_hesslag(e,h,x,obj_factor,lambda)
-                col_var_idx,row_var_idx = get_h_var_idx(m,rowid, colid)
-                # @show h_I
-                # @show h_J
-                # @show h
-                # @show col_var_idx
-                # @show row_var_idx
-                
-                new_h_I = Vector{Int}()
-                new_h_J = Vector{Int}()
-                new_h = Vector{Float64}()
-                for i = 1:length(h_I)
-                    ii = h_I[i]
-                    jj = h_J[i]
-                    vv = h[i]
-                    if haskey(col_var_idx,jj) && haskey(row_var_idx,ii)
-                        new_ii = row_var_idx[ii]
-                        new_jj = col_var_idx[jj]
-                        if new_ii < new_jj
+                    laghess = sparse(new_h_I,new_h_J, ones(Float64,length(new_h_I)))
+                    instance.t_eval_h += toq()
+                    return length(laghess.nzval)
+                elseif rowid == 0  && colid != 0 #border corss hessian
+                    e = get_nlp_evaluator(m,colid)
+                    (h_J,h_I) = MathProgBase.hesslag_structure(e) # upper trangular
+                    col_var_idx, row_var_idx = get_h_var_idx(m,rowid,colid)
+                    new_h_I = Vector{Int}()
+                    new_h_J = Vector{Int}()
+                    for i = 1:length(h_I)
+                        ii = h_I[i]
+                        jj = h_J[i]
+                        if haskey(col_var_idx,jj) && haskey(row_var_idx,ii)
+                            new_ii = row_var_idx[ii]
+                            new_jj = col_var_idx[jj]
                             push!(new_h_I,new_ii)
                             push!(new_h_J,new_jj)
-                        else
-                            push!(new_h_I,new_jj)
-                            push!(new_h_J,new_ii)
                         end
-                        push!(new_h, vv)
                     end
-                end
-                # @show new_h_I
-                # @show new_h_J
-                # @show new_h
-                
-                if(rowid !=0 && colid == 0)  #root diag contrib.
-                    # @show "root contrib", rowid, colid
-                    (h0_J,h0_I) = MathProgBase.hesslag_structure(get_nlp_evaluator(m,0))
-                    # @show h0_I,h0_J
-                    str_laghess = sparse([new_h_I;h0_I], [new_h_J;h0_J], [new_h;zeros(Float64,length(h0_I))], get_numvars(m,0),get_numvars(m,0), keepzeros=true)
-                    # @show str_laghess.m, str_laghess.n, length(str_laghess.nzval)
-                    # @show str_laghess
-                    
-                    array_copy(str_laghess.rowval,1,rowidx,1,length(str_laghess.rowval))
-                    array_copy(str_laghess.colptr,1,colptr,1,length(str_laghess.colptr))
-                    array_copy(str_laghess.nzval, 1,values,1,length(str_laghess.nzval))
-                    
-                    # @show rowidx,colptr,values
-                    # @show str_laghess.nzval
+                    laghess = sparse(new_h_I,new_h_J, ones(Float64,length(new_h_I)))
+                    instance.t_eval_h += toq()
+                    return length(laghess.nzval)
                 else
-                    str_laghess = sparse(new_h_I, new_h_J, new_h, get_numvars(m,colid), get_numvars(m,rowid), keepzeros=true)
-                    
+                    @assert (rowid !=0 && colid == 0)
+                    @assert false
+                end
+            elseif(mode == :Values)
+                if rowid == colid || (rowid !=0 && colid == 0) #diagonal or root contribution
+                    e = get_nlp_evaluator(m,rowid)
+                    (h_J, h_I) = MathProgBase.hesslag_structure(e)
+                    h = Vector{Float64}(length(h_I))
+                    x = build_x(m,rowid,x0,x1)
+                    MathProgBase.eval_hesslag(e,h,x,obj_factor,lambda)
+                    col_var_idx,row_var_idx = get_h_var_idx(m,rowid, colid)
+                    # @show h_I
+                    # @show h_J
+                    # @show h
+                    # @show col_var_idx
+                    # @show row_var_idx     
+                    new_h_I = Vector{Int}()
+                    new_h_J = Vector{Int}()
+                    new_h = Vector{Float64}()
+                    for i = 1:length(h_I)
+                        ii = h_I[i]
+                        jj = h_J[i]
+                        if haskey(col_var_idx,jj) && haskey(row_var_idx,ii)
+                            new_ii = row_var_idx[ii]
+                            new_jj = col_var_idx[jj]
+                            if new_ii < new_jj
+                                push!(new_h_I,new_ii)
+                                push!(new_h_J,new_jj)
+                            else
+                                push!(new_h_I,new_jj)
+                                push!(new_h_J,new_ii)
+                            end
+                            push!(new_h, h[i])
+                        end
+                    end
+                    # @show new_h_I
+                    # @show new_h_J
+                    # @show new_h
+                    if (rowid !=0 && colid == 0) #root contribution
+                        (h0_J,h0_I) = MathProgBase.hesslag_structure(get_nlp_evaluator(m,0))
+                        # @show h0_I,h0_J
+                        str_laghess = sparse([new_h_I;h0_I], [new_h_J;h0_J], [new_h;zeros(Float64,length(h0_I))], get_numvars(m,0),get_numvars(m,0), keepzeros=true)
+                        # @show str_laghess.m, str_laghess.n, length(str_laghess.nzval)
+                        # @show str_laghess
+                        
+                        array_copy(str_laghess.rowval,1,rowidx,1,length(str_laghess.rowval))
+                        array_copy(str_laghess.colptr,1,colptr,1,length(str_laghess.colptr))
+                        array_copy(str_laghess.nzval, 1,values,1,length(str_laghess.nzval)) 
+                        # @show str_laghess.nzval
+                    else
+                        @assert rowid == colid
+                        str_laghess = sparse(new_h_I,new_h_J,new_h,get_numvars(m,rowid),get_numvars(m,rowid),keepzeros = true)                       
+                        array_copy(str_laghess.rowval,1,rowidx,1,length(str_laghess.rowval))
+                        array_copy(str_laghess.colptr,1,colptr,1,length(str_laghess.colptr))
+                        array_copy(str_laghess.nzval, 1,values,1,length(str_laghess.nzval))
+                    end
+                else  #second stage cross hessian
+                    @assert rowid == 0 && colid !=0 
+                    e = get_nlp_evaluator(m,colid)
+                    (h_J,h_I) = MathProgBase.hesslag_structure(e) # upper trangular
+                    h = Vector{Float64}(length(h_I))
+                    x = build_x(m,colid,x0,x1)
+                    MathProgBase.eval_hesslag(e,h,x,obj_factor,lambda)
+                    col_var_idx,row_var_idx = get_h_var_idx(m,rowid, colid)
+
+                    new_h_I = Vector{Int}()
+                    new_h_J = Vector{Int}()
+                    new_h = Vector{Float64}()
+                    for i = 1:length(h_I)
+                        ii = h_I[i]
+                        jj = h_J[i]
+                        if haskey(col_var_idx,jj) && haskey(row_var_idx,ii)
+                            new_ii = row_var_idx[ii]
+                            new_jj = col_var_idx[jj]
+                            push!(new_h_I,new_ii)
+                            push!(new_h_J,new_jj)
+                            push!(new_h,h[i])
+                        end
+                    end
+                    str_laghess = sparse(new_h_I,new_h_J, new_h, get_numvars(m,colid), get_numvars(m,rowid), keepzeros =true)
                     array_copy(str_laghess.rowval,1,rowidx,1,length(str_laghess.rowval))
                     array_copy(str_laghess.colptr,1,colptr,1,length(str_laghess.colptr))
                     array_copy(str_laghess.nzval, 1,values,1,length(str_laghess.nzval))
-                    # @show rowidx,colptr,values
                 end
-                
+                # @show rowidx,colptr,values
                 filename = string("hess_",rowid,"_",colid)
                 write_mat_to_file(filename,str_laghess)
 
@@ -471,11 +513,12 @@ function init_constraints_idx_map(m,map)
         ieq_idx = Dict{Int,Int}()
         push!(map,id=>Pair(eq_idx,ieq_idx))
         lb,ub=getConstraintBounds(get_model(m,id))
+
         for i =1:length(lb)
             if lb[i] == ub[i]
                 eq_idx[i] = length(eq_idx) + 1
             else
-                ieq_idx[i] = length(ieq_idx) + 1 #remember to offset length(eq_idx)
+                ieq_idx[i] =length(ieq_idx) + 1 #remember to offset length(eq_idx)
             end
         end
     end
@@ -582,8 +625,14 @@ function SparseMatrix.sparse(I,J,V, M, N;keepzeros=false)
         fill!(full.nzval,0.0)
 
         for c = 1:N
-            crange = nzrange(actual,c)
-            full.nzval[crange] = actual.nzval[crange] 
+            for i=nzrange(actual,c)
+                r = actual.rowval[i]
+                v = actual.nzval[i]
+                if(v!=0)
+                    full[r,c] = v
+                end
+            end  
+            # full.nzval[crange] = actual.nzval[crange] 
         end        
         return full
     end
