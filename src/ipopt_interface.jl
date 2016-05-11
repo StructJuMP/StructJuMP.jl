@@ -7,8 +7,6 @@ using Ipopt
 
 import MathProgBase
 
-export solve
-
 include("./structure_helper.jl")
 
 type NonStructJuMPModel
@@ -259,7 +257,7 @@ type NonStructJuMPModel
     end
 end
 
-function solve(model)
+function structJuMPSolve(model; suppress_warmings=false,kwargs...)
     # @show typeof(model)
     nm = NonStructJuMPModel(model)
     x_L, x_U, g_L, g_U = nm.get_bounds()
