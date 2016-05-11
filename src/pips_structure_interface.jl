@@ -9,8 +9,8 @@ end
 
 module ParPipsInterface
 
-using StructJuMP, JuMP
 using ParPipsNlp
+using StructJuMP, JuMP
 using MPI
 
 import MathProgBase
