@@ -28,3 +28,11 @@ SerialIpoptInterface.structJuMPSolve(m)
 
 getVarValue(m)
 
+#verification
+# x[1]^2+x[2]^2 + y1^2 + y2^2
+
+# x[1]*x[2]
+
+# x[2]*x[1] + x[1]*y1
+
+# x[2]*x[1] + x[1]*y2 

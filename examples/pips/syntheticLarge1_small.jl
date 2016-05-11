@@ -1,9 +1,9 @@
-# include("../../src/pips_structure_interface.jl")
-include("../../src/ipopt_interface.jl")
+include("../../src/pips_structure_interface.jl")
+# include("../../src/ipopt_interface.jl")
 #an example model
 
-# using ParPipsInterface
-using SerialIpoptInterface
+using ParPipsInterface
+# using SerialIpoptInterface
 
 using StructJuMP, JuMP
 
@@ -31,7 +31,19 @@ for i in 1:scen
     end
 end
 
-# ParPipsInterface.structJuMPSolve(m)
-SerialIpoptInterface.structJuMPSolve(m)
+ParPipsInterface.structJuMPSolve(m)
+# SerialIpoptInterface.structJuMPSolve(m)
 
 getVarValue(m)
+
+# #verification 
+# nx1=5
+# nx2=3
+# sum((x-1).^4) + sum(y1.^4) + sum(y2.^4)
+
+# for c in 1:3
+# @show (x[(c-1)%5 + 1] + y1[(c-1)%3+1])^2
+# end
+# for c in 1:3
+# @show (x[(c-1)%5 + 1] + y2[(c-1)%3+1])^2
+# end
