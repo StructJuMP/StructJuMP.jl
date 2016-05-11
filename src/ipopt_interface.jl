@@ -38,15 +38,17 @@ type NonStructJuMPModel
         
         instance.get_x = function()
             m = instance.model
-            v = [];
+            v = Float64[];
+            @show num_scenarios(m)
             for i = 0:num_scenarios(m)
                 mm = get_model(m,i)
-                v = Float64[];
                 for j = 1:get_numvars(m,i)
-                    v = [v;getValue(Variable(mm,j))]
+                    v_j = getValue(Variable(mm,j))
+                    isnan(v_j)? push!(v,1.0):push!(v,v_j)
                 end
             end
             @assert length(v) == g_numvars(m)
+            @show v
             return v
         end
 
