@@ -7,7 +7,7 @@ using Ipopt
 
 import MathProgBase
 
-include("./structure_helper.jl")
+include("./nonstruct_helper.jl")
 
 type NonStructJuMPModel
     model::JuMP.Model 
@@ -18,7 +18,8 @@ type NonStructJuMPModel
     nz_jac::Vector{Int}
     nz_hess::Vector{Int}
 
-    get_x::Function
+    write_solution::Function
+    get_x0::Function
     numvars::Function
     numcons::Function
     nele_jac::Function
@@ -36,22 +37,34 @@ type NonStructJuMPModel
             Vector{Int}(), Vector{Int}()
             )
         
-        instance.get_x = function()
+        instance.write_solution = function(x)
+            @assert length(x) == g_numvars(m)
             m = instance.model
-            v = Float64[];
-            @show num_scenarios(m)
+            idx = 1
+            for i = 0:num_scenarios(m)
+                mm = get_model(m,i)
+                for j = 1:get_numvars(m,i)
+                    setValue(Variable(mm,j),x[idx])
+                    idx += 1
+                end
+            end
+        end
+
+        instance.get_x0 = function(x)
+            @assert length(x) == g_numvars(m)
+            m = instance.model
+            idx = 1
             for i = 0:num_scenarios(m)
                 mm = get_model(m,i)
                 for j = 1:get_numvars(m,i)
                     v_j = getValue(Variable(mm,j))
-                    isnan(v_j)? push!(v,1.0):push!(v,v_j)
+                    x[idx] = isnan(v_j)? 1.0:v_j
+                    idx += 1
                 end
             end
-            @assert length(v) == g_numvars(m)
-            @show v
-            return v
+            # @show x
+            return x
         end
-
         instance.numvars = function()
             return g_numvars(instance.model)
         end
@@ -290,8 +303,9 @@ function structJuMPSolve(model; suppress_warmings=false,kwargs...)
     prob = createProblem(n, x_L, x_U, m, g_L, g_U, nele_jac, nele_hess,
                          nm.eval_f, nm.eval_g, nm.eval_grad_f, nm.eval_jac_g, nm.eval_h)
 
-    prob.x = nm.get_x()
+    nm.get_x0(prob.x)
     status = solveProblem(prob)
+    nm.write_solution(prob.x)
     return status
 end
 

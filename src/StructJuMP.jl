@@ -8,7 +8,7 @@ import ReverseDiffSparse
 
 export StructuredModel, getStructure, getparent, getchildren, getProcIdxSet,
        num_scenarios, @second_stage,
-       getScenarioIds
+       getScenarioIds, getVarValue
 
 # ---------------
 # StructureData
@@ -56,7 +56,7 @@ num_scenarios(m::JuMP.Model)  = getStructure(m).num_scen
 function getMyRank()
     myrank = 0;
     mysize = 1;
-    if isdefined(:MPI)==true && MPI.Initialized()==true
+    if isdefined(:MPI)==true && MPI.Initialized()==true && MPI.Finalized() == false
         comm = MPI.COMM_WORLD
         mysize = MPI.Comm_size(comm)
         myrank = MPI.Comm_rank(comm)
@@ -71,6 +71,14 @@ function getScenarioIds(m::JuMP.Model)
     s = myrank * d + 1
     e = myrank == (mysize-1)? numScens:s+d-1
     ids = [0;s:e]
+end
+
+function getVarValue(m)
+    ids = getScenarioIds(m)
+    for i in ids
+        @printf "At node : %d\n" i
+        @printf "\t %s \n" get_var_value(m,i)
+    end
 end
 
 function getProcIdxSet(numScens::Integer)
@@ -104,5 +112,6 @@ macro second_stage(m,ind,code)
 end
 
 include("nlp.jl")
+include("helper.jl")
 
 end

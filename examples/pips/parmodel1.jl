@@ -1,8 +1,12 @@
 include("../../src/pips_structure_interface.jl")
+# include("../../src/ipopt_interface.jl")
 #an example model
 
 using ParPipsInterface
+# using SerialIpoptInterface
+
 using StructJuMP, JuMP
+
 
 scen = 2
 m = StructuredModel(num_scenarios=scen)
@@ -17,4 +21,7 @@ for i in 1:scen
     @setNLObjective(bl, Min, (x[1]+x[2])*y)
 end
 
-ParPipsInterface.solve(m)
+ParPipsInterface.structJuMPSolve(m)
+# SerialIpoptInterface.structJuMPSolve(m)
+# @show ParPipsInterface.get_var_value(m,0)
+# @show ParPipsInterface.get_var_value(m,1)
