@@ -19,6 +19,7 @@ export solve
 
 include("./structure_helper.jl")
 
+
 type StructJuMPModel <: ModelInterface
     internalModel::JuMP.Model
     status::Int
@@ -502,36 +503,25 @@ end
 #######
 # Linking with PIPS Julia Structure interface
 ######
-function createStructJuMPPipsNlpProblem(model::JuMP.Model)
-    # @show "createStructJuMPPipsNlpProblem"
-    comm = MPI.COMM_WORLD
-    # @show "[$(MPI.Comm_rank(comm))/$(MPI.Comm_size(comm))] create problem "
-    
-    prob = createProblemStruct(comm, StructJuMPModel(model,0))
-    # @show "end createStructJuMPPipsNlpProblem"
-    return prob
-end
 
-function solveStructJuMPPipsNlpProblem(prob)
-    # @show "solveStructJuMPPipsNlpProblem"
-    # @show prob
-    ret = solveProblemStruct(prob)
-    # @show "end solveStructJuMPPipsNlpProblem"
-    return ret
-end
+# setsolverhook(model,structJuMPSolve)
 
-function solve(model)
+function structJuMPSolve(model; suppress_warmings=false,kwargs...)
     # @show "solve"
     # global m = model
     t_total = 0.0
     tic()
     MPI.Init()
 
-    prob = createStructJuMPPipsNlpProblem(model)
+    comm = MPI.COMM_WORLD
+    # @show "[$(MPI.Comm_rank(comm))/$(MPI.Comm_size(comm))] create problem "
+    
+    prob = createProblemStruct(comm, StructJuMPModel(model,0))
+    # @show "end createStructJuMPPipsNlpProblem"
 
     solver_total = 0.0
     tic()
-    solveStructJuMPPipsNlpProblem(prob)
+    status = solveProblemStruct(prob)
     solver_total += toq()
 
     freeProblemStruct(prob)
@@ -545,6 +535,8 @@ function solve(model)
       @printf "Total time %.4f (initialization=%.3f modelling=%.3f solver=%.3f) (in sec)\n" t_total prob.model.t_init_idx modeling_time solver_time
     end
     MPI.Finalize()
+
+    return status
 end
 
 end
