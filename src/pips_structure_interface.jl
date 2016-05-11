@@ -15,7 +15,6 @@ using MPI
 
 import MathProgBase
 
-export solve
 
 include("./structure_helper.jl")
 
