@@ -18,6 +18,7 @@ type NonStructJuMPModel
     nz_jac::Vector{Int}
     nz_hess::Vector{Int}
 
+    get_x::Function
     numvars::Function
     numcons::Function
     nele_jac::Function
@@ -34,7 +35,20 @@ type NonStructJuMPModel
             Vector{Int}(), Vector{Int}(), Vector{Int}(), Vector{Int}(),
             Vector{Int}(), Vector{Int}()
             )
-
+        
+        instance.get_x = function()
+            m = instance.model
+            v = [];
+            for i = 0:num_scenarios(m)
+                mm = get_model(m,i)
+                v = Float64[];
+                for j = 1:get_numvars(m,i)
+                    v = [v;getValue(Variable(mm,j))]
+                end
+            end
+            @assert length(v) == g_numvars(m)
+            return v
+        end
 
         instance.numvars = function()
             return g_numvars(instance.model)
@@ -274,7 +288,7 @@ function structJuMPSolve(model; suppress_warmings=false,kwargs...)
     prob = createProblem(n, x_L, x_U, m, g_L, g_U, nele_jac, nele_hess,
                          nm.eval_f, nm.eval_g, nm.eval_grad_f, nm.eval_jac_g, nm.eval_h)
 
-    fill!(prob.x,1.0)
+    prob.x = nm.get_x()
     status = solveProblem(prob)
     return status
 end
