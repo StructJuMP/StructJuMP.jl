@@ -91,7 +91,7 @@ type NonStructJuMPModel
 
         instance.nele_hess = function()
             @assert length(instance.hess_I) == length(instance.hess_J)
-            mat = sparse(instance.hess_I,instance.hess_J,ones(Float64,length(instance.hess_I)))
+            mat = sparse(instance.hess_J,instance.hess_I,ones(Float64,length(instance.hess_I)))
             instance.nzh = length(mat.nzval)
             return instance.nzh
         end
@@ -188,20 +188,21 @@ type NonStructJuMPModel
             else
                 start_idx = 1
                 value_start = 1
-                value = Vector{Float64}()
+                value = Vector{Float64}(length(instance.jac_I))
                 for i = 0:num_scenarios(m)
                     e = get_nlp_evaluator(m,i)
                     x_new = strip_x(instance.model,i,x,start_idx)
                     i_nz_jac = instance.nz_jac[i+1]
                     jac_g = Vector{Float64}(i_nz_jac)
                     MathProgBase.eval_jac_g(e,jac_g,x_new)
-                    array_copy(jac_g,1,values,value_start,i_nz_jac)
+                    array_copy(jac_g,1,value,value_start,i_nz_jac)
                     nx = get_numvars(m,i)
                     start_idx += nx
                     value_start += i_nz_jac
                 end
                 @assert length(instance.jac_I) == length(instance.jac_J) == length(value)
-                mat = sparse(instance.jac_I,instance.jac_J,value)
+                mat = sparse(instance.jac_I,instance.jac_J,value, g_numcons(instance.model), g_numvars(instance.model), keepzeros=true)
+                
                 @assert length(mat.nzval) == instance.nzj
                 array_copy(mat.nzval,1,nzvals,1,instance.nzj)
             end
@@ -210,7 +211,7 @@ type NonStructJuMPModel
         instance.eval_h = function(x, mode, rows, cols, obj_factor, lambda, nzvals) #x, mode, irows, kcols, obj_factor, lambda, values)
             m = instance.model
             if mode == :Structure
-                mat = sparse(instance.hess_I,instance.hess_J,ones(Float64,length(instance.hess_I)))
+                mat = sparse(instance.hess_J,instance.hess_I,ones(Float64,length(instance.hess_I)))
                 @assert length(mat.nzval) == instance.nzh
                 array_copy(mat.rowval,1,rows,1,length(mat.rowval))
                 array_copy(mat.colptr,1,cols,1,length(mat.colptr))
@@ -218,7 +219,7 @@ type NonStructJuMPModel
                 start_idx = 1
                 value_start = 1
                 lambda_start = 1
-                value = Vector{Float64}()
+                value = Vector{Float64}(length(instance.hess_I))
                 for i = 0:num_scenarios(m)
                     e = get_nlp_evaluator(m,i)
                     x_new = strip_x(instance.model,i,x,start_idx)
@@ -228,14 +229,14 @@ type NonStructJuMPModel
                     i_nz_hess = instance.nz_hess[i+1]
                     h = Vector{Float64}(i_nz_hess)
                     MathProgBase.eval_hesslag(e,h,x_new,obj_factor,lambda_new)
-                    array_copy(h,1,values,value_start,i_nz_hess)
+                    array_copy(h,1,value,value_start,i_nz_hess)
                     nx = get_numvars(m,i)
                     start_idx += nx
                     lambda_start += nc
                     value_start += i_nz_hess
                 end
                 @assert length(instance.hess_I) == length(instance.hess_J) == length(value)
-                mat = sparse(instance.hess_I,instance.hess_J,value)
+                mat = sparse(instance.hess_J,instance.hess_I,value,  g_numvars(instance.model), g_numvars(instance.model), keepzeros=true)
                 @assert length(mat.nzval) == instance.nzh
                 array_copy(mat.nzval,1,nzvals,1,instance.nzh)
             end
@@ -316,10 +317,10 @@ function structJuMPSolve(model; suppress_warmings=false,kwargs...)
     nele_jac = nm.nele_jac()
     nele_hess = nm.nele_hess()
 
-    @show x_L, x_U
-    @show g_L, g_U
-    @show n,m
-    @show nele_jac,nele_hess
+    # @show x_L, x_U
+    # @show g_L, g_U
+    # @show n,m
+    # @show nele_jac,nele_hess
 
     prob = createProblem(n, m, x_L, x_U, g_L, g_U, nele_jac, nele_hess,
                          nm.eval_f, nm.eval_g, nm.eval_grad_f, nm.eval_jac_g, nm.eval_h)
