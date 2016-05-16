@@ -29,5 +29,5 @@ Example solver interface implementations for PIPS are provided in [PIPS Structur
 The StructJuMP model can also be solve by Ipopt. [Ipopt](https://projects.coin-or.org/Ipopt) is an Interior point optimization solver for finding local solution of large-scale nonlinear optimization problems. In this case, modeller can still take advantage of StructJuMP to model the problem using its Structure, but to solve the problem using a more matured (robust) solver. An example interface implementation for Ipopt is provided in [Ipopt Interface](https://github.com/fqiang/StructJuMP.jl/blob/master/src/ipopt_interface.jl).
 
 ## Known Limitation
-*If the constraint declared at the sub-problem uses variable from the parent level, it has to be add using @addNLConstraint. 
-*Variables declared in sub-problem has to be putted in front of constraints declarations. This is should be considered when using the provided Ipopt and PIPS solver interface.  
+* If the constraint declared at the sub-problem uses variable from the parent level, it has to be add using @addNLConstraint. 
+* Variables declared in sub-problem has to be putted in front of constraints declarations. This is should be considered when using the provided Ipopt and PIPS solver interface.  
