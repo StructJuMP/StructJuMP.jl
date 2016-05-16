@@ -1,8 +1,15 @@
-include("../../src/pips_structure_interface.jl")
-#a large example model (synthetic) 
-
-using ParPipsInterface
 using StructJuMP, JuMP
+using SolverInterface
+
+using SerialIpoptInterface
+using SerialPipsNlpInterface
+using ParPipsNlpInterface
+
+# structJuMPSolve = SerialIpoptInterface.structJuMPSolve
+# structJuMPSolve = SerialPipsNlpInterface.structJuMPSolve
+structJuMPSolve = ParPipsNlpInterface.structJuMPSolve
+
+#an example model
 
 nx1=50; ni1=10
 nx2=5000; ni2=30
@@ -27,4 +34,6 @@ for i in 1:scen
     end
 end
 
-ParPipsInterface.solve(firststage)
+structJuMPSolve(m)
+
+getVarValue(m)

@@ -1,11 +1,15 @@
-# include("../../src/pips_structure_interface.jl")
-include("../../src/ipopt_interface.jl")
-#an example model
-
-# using ParPipsInterface
-using SerialIpoptInterface
-
 using StructJuMP, JuMP
+using SolverInterface
+
+using SerialIpoptInterface
+using SerialPipsNlpInterface
+using ParPipsNlpInterface
+
+# structJuMPSolve = SerialIpoptInterface.structJuMPSolve
+# structJuMPSolve = SerialPipsNlpInterface.structJuMPSolve
+structJuMPSolve = ParPipsNlpInterface.structJuMPSolve
+
+
 
 #############
 # A sample model
@@ -25,8 +29,7 @@ for i in 1:scen
     @setNLObjective(bl, Min, (y[1]+y[2])^2)
 end
 
-# ParPipsInterface.structJuMPSolve(m)
-SerialIpoptInterface.structJuMPSolve(m)
+structJuMPSolve(m)
 
 getVarValue(m)
 

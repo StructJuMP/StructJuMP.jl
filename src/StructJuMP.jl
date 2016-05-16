@@ -73,14 +73,6 @@ function getScenarioIds(m::JuMP.Model)
     ids = [0;s:e]
 end
 
-function getVarValue(m)
-    ids = getScenarioIds(m)
-    for i in ids
-        @printf "At node : %d\n" i
-        @printf "\t %s \n" get_var_value(m,i)
-    end
-end
-
 function getProcIdxSet(numScens::Integer)
     mysize = 1;
     myrank = 0;
@@ -112,6 +104,5 @@ macro second_stage(m,ind,code)
 end
 
 include("nlp.jl")
-include("helper.jl")
 
 end
