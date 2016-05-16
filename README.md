@@ -26,7 +26,7 @@ The StructJuMP model can be solved by either PIPS or DSP. [PIPS](https://github.
 Example solver interface implementations for PIPS are provided in [PIPS Structure Interface](https://github.com/fqiang/StructJuMP.jl/blob/master/src/pips_structure_interface.jl) and [PIPS Serial Interface](https://github.com/fqiang/StructJuMP.jl/blob/master/src/serial_pipsnlp_interface.jl).
 
 ### Nonstructured solver
-The StructJuMP model can also be solve by Ipopt. [Ipopt](https://projects.coin-or.org/Ipopt) is an Interior point optimization solver for finding local solution of large-scale nonlinear optimization problems. In this case, modeller can still take advantage of StructJuMP to model the problem using its Structure, but to solve the problem using a more matured (robust) solver. An example interface implementation for Ipopt is provided in [Ipopt Interface](https://github.com/fqiang/StructJuMP.jl/blob/master/src/ipopt_interface.jl).
+The StructJuMP model can also be solve by Ipopt. [Ipopt](https://projects.coin-or.org/Ipopt) is an Interior point optimization solver for finding local solution of large-scale nonlinear optimization problems. In this case, modeller can still take advantage of StructJuMP to model the problem using the problem' structure, but to solve the problem using more matured (or robust) solvers. An example interface implementation for Ipopt is provided in [Ipopt Interface](https://github.com/fqiang/StructJuMP.jl/blob/master/src/ipopt_interface.jl).
 
 ## Known Limitation
 * If the constraint declared at the sub-problem uses variable from the parent level, it has to be add using @addNLConstraint. 
