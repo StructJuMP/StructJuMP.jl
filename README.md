@@ -30,4 +30,4 @@ The StructJuMP model can also be solve by Ipopt. [Ipopt](https://projects.coin-o
 
 ## Known Limitation
 * If the constraint declared at the sub-problem uses variable from the parent level, it has to be add using @addNLConstraint. 
-* Variables declared in sub-problem has to be putted in front of constraints declarations. This is should be considered when using the provided Ipopt and PIPS solver interface.  
+* Variables declared in sub-problem has to be putted in front of constraints declarations. This is limitation only applys when using the provided Ipopt and PIPS solver interface.  
