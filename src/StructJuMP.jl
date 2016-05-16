@@ -7,7 +7,7 @@ import MathProgBase.MathProgSolverInterface
 import ReverseDiffSparse
 
 export StructuredModel, getStructure, getparent, getchildren, getProcIdxSet,
-       num_scenarios, @second_stage
+       num_scenarios, @second_stage, getprobability
 
 # ---------------
 # StructureData

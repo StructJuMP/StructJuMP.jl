@@ -61,14 +61,14 @@ function loadMasterProblem(c, A, b, K, C, v, num_scen, solver)
     for (cone, ind) in K
         for i in 1:length(ind)
             if cone == :Zero
-                @addConstraint(master_model, A[ind[i],:]*x .== b[ind[i]])
+                @addConstraint(master_model, dot(A[ind[i],:], x) == b[ind[i]])
             elseif cone == :NonNeg
-                @addConstraint(master_model, A[ind[i],:]*x .<= b[ind[i]])
+                @addConstraint(master_model, dot(A[ind[i],:], x) <= b[ind[i]])
             elseif cone == :NonPos
-                @addConstraint(master_model, A[ind[i],:]*x .>= b[ind[i]])
+                @addConstraint(master_model, dot(A[ind[i],:], x) >= b[ind[i]])
             elseif cone == :SOC
                 @addConstraint(master_model, norm(b[ind[2:end-1]] - A[ind[2:end-1],:]*x) .<= b[ind[1]] - A[ind[1],:]*x)
-                @addConstraint(master_model, A[ind[1],:]*x .<= b[ind[1]])
+                @addConstraint(master_model, dot(A[ind[1],:], x) <= b[ind[1]])
             else
                 error("unrecognized cone $cone")
             end
@@ -108,17 +108,26 @@ function addCuttingPlanes(master_model, num_scen, A_all, b_all, output, x, θ, s
     # add cutting planes, one per scenario
     for i = 1:num_scen
         #@show typeof(b_all[i+1])
-        coef = vecdot(output[i][2], A_all[i+1])
+        coef = vec(output[i][2]' * A_all[i+1])
         rhs = vecdot(output[i][2], b_all[i+1])
         #@show size(coef*separator'), size(rhs)
         # add an infeasibility cut
         if output[i][1] == :Infeasible
-            @addConstraint(master_model, coef*x .<= rhs)
+            # output[i][2] is a ray
+            # so alpha * output[i][2] is also valid for any alpha >= 0.
+            # Hence output[i][2] might have very large coefficients and alter
+            # the numerial accuracy of the master's solver.
+            # We scale it to avoid this issue
+            scaling = abs(rhs)
+            if scaling == 0
+              scaling = max(coef)
+            end
+            @addConstraint(master_model, dot(coef/scaling, x) <= sign(rhs))
             cut_added = true
         # add an optimality cut
         else
-            if getValue(θ[i]) < (coef*separator' - rhs)[1] - TOL
-                @addConstraint(master_model, coef*x - θ[i] .<= rhs)
+            if getValue(θ[i]) < (dot(coef, separator) - rhs)[1] - TOL
+                @addConstraint(master_model, dot(coef, x) - θ[i] <= rhs)
                 cut_added = true
             end
         end
