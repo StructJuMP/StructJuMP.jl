@@ -3,24 +3,32 @@ The StructJuMP.jl package provides a scalable algebraic modeling framework for b
 
 An example of the StructJuMP.jl package reads:
 ```julia
-using StructJuMP
+using StructJuMP, JuMP
 
-numScen = 2
-m = StructuredModel(numScen)
+scen = 20
+m = StructuredModel(num_scenarios=scen)
+@defVar(m, x[1:2])
+@addNLConstraint(m, x[1] + x[2] == 100)
+@setNLObjective(m, Min, x[1]^2 + x[2]^2 + x[1]*x[2])
 
-@defVar(m, 0 <= x <= 1)
-@defVar(m, 0 <= y <= 1)
-
-@addConstraint(m, x + y == 1)
-setObjective(m, :Min, x*x + y)
-
-for i in 1:numScen
+for i in 1:scen
     bl = StructuredModel(parent=m)
-    @defVar(bl, w >= 0)
-    @addConstraint(bl, w - x - y <= 1)
-    @setObjective(bl, Min, w*w + w)
+    @defVar(bl, y[1:2])
+    @addNLConstraint(bl, x[1] + y[1]+y[2] ≥  0)
+    @addNLConstraint(bl, x[2] + y[1]+y[2] ≤ 50)
+    @setNLObjective(bl, Min, y[1]^2 + y[2]^2 + y[1]*y[2])
 end
 ```
 
 ## Solvers for StructJuMP
+### Structured solver
 The StructJuMP model can be solved by either PIPS or DSP. [PIPS](https://github.com/Argonne-National-Laboratory/PIPS/) is an open-source parallel interior point solver for stochastic convex and nonconvex continuous programs. [DSP](https://github.com/kibaekkim/DSP) is a open-source package of the parallel decomposition methods for stochastic mixed-integer programs. The Julia interface for PIPS and DSP are also available in [PIPS.jl](https://github.com/kibaekkim/PIPS.jl) and [DSPsolver.jl](https://github.com/kibaekkim/DSPsolver.jl), respectively.
+An example interface between StructJuMP and PISP is provided in [PIPS Interface](https://github.com/fqiang/StructJuMP.jl/blob/master/src/pips_structure_interface.jl). 
+
+### Nonstructured solver
+The StructJuMP model can also be solve by Ipopt. [Ipopt](https://projects.coin-or.org/Ipopt) is an Interior point optimization solver for finding local solution of large-scale nonlinear optimization problems.  
+An example interface between StructJuMP and Ipopt is provided in [Ipopt Interface](https://github.com/fqiang/StructJuMP.jl/blob/master/src/ipopt_interface.jl).
+
+## Known Limitation
+### If the constraint uses variables from the parent level, it has to be add using @addNLConstraint. 
+### Variables declared in second level has to be putted in front of constraints declarations. 
