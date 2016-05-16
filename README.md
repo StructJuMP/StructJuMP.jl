@@ -23,12 +23,11 @@ end
 ## Solvers for StructJuMP
 ### Structured solver
 The StructJuMP model can be solved by either PIPS or DSP. [PIPS](https://github.com/Argonne-National-Laboratory/PIPS/) is an open-source parallel interior point solver for stochastic convex and nonconvex continuous programs. [DSP](https://github.com/kibaekkim/DSP) is a open-source package of the parallel decomposition methods for stochastic mixed-integer programs. The Julia interface for PIPS and DSP are also available in [PIPS.jl](https://github.com/kibaekkim/PIPS.jl) and [DSPsolver.jl](https://github.com/kibaekkim/DSPsolver.jl), respectively.
-An example interface between StructJuMP and PISP is provided in [PIPS Interface](https://github.com/fqiang/StructJuMP.jl/blob/master/src/pips_structure_interface.jl). 
+Example solver interface implementations for PIPS are provided in [PIPS Structure Interface](https://github.com/fqiang/StructJuMP.jl/blob/master/src/pips_structure_interface.jl) and [PIPS Serial Interface](https://github.com/fqiang/StructJuMP.jl/blob/master/src/serial_pipsnlp_interface.jl).
 
 ### Nonstructured solver
-The StructJuMP model can also be solve by Ipopt. [Ipopt](https://projects.coin-or.org/Ipopt) is an Interior point optimization solver for finding local solution of large-scale nonlinear optimization problems.  
-An example interface between StructJuMP and Ipopt is provided in [Ipopt Interface](https://github.com/fqiang/StructJuMP.jl/blob/master/src/ipopt_interface.jl).
+The StructJuMP model can also be solve by Ipopt. [Ipopt](https://projects.coin-or.org/Ipopt) is an Interior point optimization solver for finding local solution of large-scale nonlinear optimization problems. In this case, modeller can still take advantage of StructJuMP to model the problem using its Structure, but to solve the problem using a more matured (robust) solver. An example interface implementation for Ipopt is provided in [Ipopt Interface](https://github.com/fqiang/StructJuMP.jl/blob/master/src/ipopt_interface.jl).
 
 ## Known Limitation
-### If the constraint uses variables from the parent level, it has to be add using @addNLConstraint. 
-### Variables declared in second level has to be putted in front of constraints declarations. 
+*If the constraint declared at the sub-problem uses variable from the parent level, it has to be add using @addNLConstraint. 
+*Variables declared in sub-problem has to be putted in front of constraints declarations. This is should be considered when using the provided Ipopt and PIPS solver interface.  
