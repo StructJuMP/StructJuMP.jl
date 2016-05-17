@@ -1,13 +1,7 @@
 using StructJuMP, JuMP
 using SolverInterface
 
-using SerialIpoptInterface
-using SerialPipsNlpInterface
-using ParPipsNlpInterface
-
-# structJuMPSolve = SerialIpoptInterface.structJuMPSolve
-# structJuMPSolve = SerialPipsNlpInterface.structJuMPSolve
-structJuMPSolve = ParPipsNlpInterface.structJuMPSolve
+include("select_solver.jl")
 
 scen = 20
 m = StructuredModel(num_scenarios=scen)
