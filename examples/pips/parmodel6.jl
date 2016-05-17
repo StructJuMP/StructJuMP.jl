@@ -1,5 +1,5 @@
 using StructJuMP, JuMP
-using SolverInterface
+using StructJuMPSolverInterface
 
 include("select_solver.jl")
 
