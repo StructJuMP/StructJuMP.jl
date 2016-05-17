@@ -21,13 +21,10 @@ end
 ```
 
 ## Solvers for StructJuMP
-### Structured solver
 The StructJuMP model can be solved by either PIPS or DSP. [PIPS](https://github.com/Argonne-National-Laboratory/PIPS/) is an open-source parallel interior point solver for stochastic convex and nonconvex continuous programs. [DSP](https://github.com/kibaekkim/DSP) is a open-source package of the parallel decomposition methods for stochastic mixed-integer programs. The Julia interface for PIPS and DSP are also available in [PIPS.jl](https://github.com/kibaekkim/PIPS.jl) and [DSPsolver.jl](https://github.com/kibaekkim/DSPsolver.jl), respectively.
-Example solver interface implementations for PIPS are provided in [PIPS Structure Interface](https://github.com/fqiang/StructJuMP.jl/blob/master/src/pips_structure_interface.jl) and [PIPS Serial Interface](https://github.com/fqiang/StructJuMP.jl/blob/master/src/serial_pipsnlp_interface.jl).
 
-### Nonstructured solver
-The StructJuMP model can also be solve by Ipopt. [Ipopt](https://projects.coin-or.org/Ipopt) is an Interior point optimization solver for finding local solution of large-scale nonlinear optimization problems. In this case, modeller can still take advantage of StructJuMP to model the problem using the problem' structure, but to solve the problem using more matured (or robust) solvers. An example interface implementation for Ipopt is provided in [Ipopt Interface](https://github.com/fqiang/StructJuMP.jl/blob/master/src/ipopt_interface.jl).
+##Nonlinear solvers for StructJuMP
+The nonlinear StructJuMP models can be solved by either parallel or serial optimizaton solvers, such as PIPS-NLP and Ipopt respectively. [PIPS-NLP](https://github.com/Argonne-National-Laboratory/PIPS) is an extension to PIPS that parallelizes the solving algorithm for nonlinear programming problems using *Schur complement* approach. [Ipopt](https://projects.coin-or.org/Ipopt) is an Interior point optimization solver for finding local solution of large-scale nonlinear optimization problems. In the later case, modeller can still take advantage of StructJuMP to model the problem using its structure, and to solve the problem using more matured (or robust) solvers. The corresponding solver interface implementations for PIPS-NLP and Ipopt are located at [SolverInterface](https://github.com/fqiang/SolverInterface.jl). 
 
 ## Known Limitation
-* If the constraint declared at the sub-problem uses variable from the parent level, it has to be add using @addNLConstraint. 
-* Variables declared in sub-problem has to be putted in front of constraints declarations. This limitation is only applied when using the provided Ipopt and PIPS solver interface.  
+* If a constraint declared at the sub-problem uses variable from the parent level, it has to be add using @addNLConstraint (instead of @addConstraint). 
