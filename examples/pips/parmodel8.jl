@@ -8,20 +8,20 @@ include("select_solver.jl")
 #############
 scen = 2
 m = StructuredModel(num_scenarios=scen)
-@defVar(m, x[1:2])
-# @defVar(m, z)
+@variable(m, x[1:2])
+# @variable(m, z)
 # setLower(z,1.0)
 # setUpper(z,1.0)
 
-@setNLObjective(m, Min, x[1]^2+x[2]^2+x[1] + x[1]*x[2])
-@addNLConstraint(m, 0<=x[1] + x[2]<= 100)
+@NLobjective(m, Min, x[1]^2+x[2]^2+x[1] + x[1]*x[2])
+@NLconstraint(m, 0<=x[1] + x[2]<= 100)
 
 for i in 1:scen
     bl = StructuredModel(parent=m)
-    @defVar(bl, y[1:2])
-    @addNLConstraint(bl, -100<= x[2]*x[1] + x[1]*y[1]*y[2] <= 100)
-    @addNLConstraint(bl, -100<= x[2]*x[1]*y[1]*y[2] <= 100)
-    @setNLObjective(bl, Min, (y[1]+y[2])^2)
+    @variable(bl, y[1:2])
+    @NLconstraint(bl, -100<= x[2]*x[1] + x[1]*y[1]*y[2] <= 100)
+    @NLconstraint(bl, -100<= x[2]*x[1]*y[1]*y[2] <= 100)
+    @NLobjective(bl, Min, (y[1]+y[2])^2)
 end
 
 structJuMPSolve(m)
