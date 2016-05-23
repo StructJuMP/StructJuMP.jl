@@ -29,14 +29,24 @@ default_probability(::Void) = 1.0
 # ---------------
 
 # Constructor with the number of scenarios
-function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, num_scenarios::Int=0, prob::Float64=default_probability(parent))
+function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, same_children_as=nothing, num_scenarios::Int=0, prob::Float64=default_probability(parent))
     m = JuMP.Model(solver=solver)
     if parent !== nothing
         stoch = getStructure(parent)
         push!(stoch.children, m)
         push!(stoch.probability, prob)
     end
-    m.ext[:Stochastic] = StructureData(Float64[], JuMP.Model[], parent, num_scenarios, JuMP.Variable[])
+    if same_children_as !== nothing
+      if !isa(same_children_as, JuMP.Model) || !haskey(same_children_as.ext, :Stochastic)
+        error("The JuMP model given for the argument `same_children_as' is not valid. Please create it using the `StructuredModel' function.")
+      end
+      probability = same_children_as.ext[:Stochastic].probability
+      children = same_children_as.ext[:Stochastic].children
+    else
+      probability = Float64[]
+      children = JuMP.Model[]
+    end
+    m.ext[:Stochastic] = StructureData(probability, children, parent, num_scenarios, JuMP.Variable[])
     m
 end
 

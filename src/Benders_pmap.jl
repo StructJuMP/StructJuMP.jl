@@ -120,7 +120,7 @@ function addCuttingPlanes(master_model, num_scen, A_all, b_all, output, x, θ, s
             # We scale it to avoid this issue
             scaling = abs(rhs)
             if scaling == 0
-              scaling = max(coef)
+              scaling = maximum(coef)
             end
             @addConstraint(master_model, dot(coef/scaling, x) <= sign(rhs))
             cut_added = true
