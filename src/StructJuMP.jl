@@ -7,9 +7,8 @@ import MathProgBase.MathProgSolverInterface
 import ReverseDiffSparse
 
 export StructuredModel, getStructure, getparent, getchildren, getProcIdxSet,
-       num_scenarios, @second_stage, getprobability,
-       getScenarioIds, getVarValue
-
+       num_scenarios, @second_stage, getprobability, getMyRank
+       
 # ---------------
 # StructureData
 # ---------------
@@ -72,15 +71,6 @@ function getMyRank()
         myrank = MPI.Comm_rank(comm)
     end
     return myrank,mysize
-end
-
-function getScenarioIds(m::JuMP.Model)
-    myrank,mysize = getMyRank()
-    numScens = num_scenarios(m)
-    d = div(numScens,mysize)
-    s = myrank * d + 1
-    e = myrank == (mysize-1)? numScens:s+d-1
-    ids = [0;s:e]
 end
 
 function getProcIdxSet(numScens::Integer)
