@@ -1,15 +1,15 @@
 using JuMP
-using StochJuMP
+using StructJuMP
 
 include("Benders_pmap.jl")
 
 #===================================================
  The following function is taken from JuMP
  src/solvers.jl. Modified for extension 
- StochJuMP/Benders_pmap.jl.
+ StructJuMP/Benders_pmap.jl.
 ===================================================#
 function conicconstraintdata(m::Model)
-    stoch = getStochastic(m)
+    stoch = getStructure(m)
     parent = stoch.parent
     numMasterCols = 0
     if parent != nothing

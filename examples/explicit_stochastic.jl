@@ -1,4 +1,4 @@
-using StochJuMP
+using StructJuMP
 
 ######
 # DATA
@@ -15,23 +15,23 @@ node = NODES[1]
 Pload = ones(2,2)
 ref_bus = 1
 
-m = StochasticModel()
+m = StructuredModel()
 
 @defStochasticVar(m, dummyV >= 0)
 
-s0 = StochasticBlock(m, "Stage 0")
+s0 = StructuredModel(parent=m)
 @defStochasticVar(s0, 0 <= y[TESTTIME,GEN] <= 1)
 @setObjective(s0, Min, FIXEDGENCOST*sum{y[t,j], t=TESTTIME,j=GEN})
 
 for it in 1:NUMSTAGES
-    st = StochasticBlock(s0, "Stage $it")
+    st = StructuredModel(parent=s0)
     @defStochasticVar(st, 0 <= Pgen[TESTTIME,j=GEN] <= np_cap[j])
     @defStochasticVar(st, 0 <= Pwind[t=TESTTIME,j=WIND] <= wind_total[node,t]*wind_share[j])
     @defStochasticVar(st, -THETASCALE*π/2 <= theta[TESTTIME,j=BUS] <= THETASCALE*π/2)
     @defStochasticVar(st, -Pmax[i] <= P[TESTTIME,i=LIN] <= Pmax[i])
     for t in TESTTIME
         for j in BUS
-            @addConstraint(st, ( sum{P[t,i], i=LIN; j==rec_bus[i]} 
+            @addConstraint(st, ( sum{P[t,i], i=LIN; j==rec_bus[i]}
                                 -sum{P[t,i], i=LIN; j==snd_bus[i]}
                                 +sum{Pgen[t,i], i=GEN; j==bus_gen[i]}
                                 -sum{Pload[t,i], i=LOAD; j==bus_load[i]}

@@ -1,7 +1,7 @@
-using StochJuMP, MPI 
+using StructJuMP, MPI
 
 numScens = 2
-m = StochasticModel(numScens)
+m = StructuredModel(numScens)
 
 @defVar(m, x >= 1)
 @defVar(m, y <= 2)
@@ -16,10 +16,9 @@ qc   = [1,0.5]
 ac   = [1,0.75]
 
 @second_stage m scen begin
-    bl = StochasticBlock(m)
+    bl = StructuredModel(parent=m)
     @defVar(bl, 0 <= w <= 1)
     @addConstraint(bl, coef[scen]w - x - y <= rhs[scen])
     @addConstraint(bl, coef[scen]w + x     == rhs[scen])
     setObjective(bl, :Min, qc[scen]*w*w + ac[scen]*w)
 end
-

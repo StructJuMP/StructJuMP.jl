@@ -1,4 +1,4 @@
-using StochJuMP
+using StructJuMP
 
 TIME = 1:Nt
 TIMEm = 1:(Nt-1)
@@ -23,7 +23,7 @@ cs = 0.
 
 dt = Tf / Nt
 
-m = StochasticModel()
+m = StructuredModel()
 
 @defVar(m, pmin[j] <= p[SCEN,j=NODE,TIME] <= pmax[j])
 @defVar(m, 0 <= dp[SCEN,filter(x->x.ltype=="a",LINK),TIME] <= 100)
