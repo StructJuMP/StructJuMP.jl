@@ -9,8 +9,7 @@ function JuMP.parseNLExpr_runtime(m::JuMP.Model, x::JuMP.Variable, tape, parent:
             newx = othermap[x]
         else
             newx = JuMP.Variable(m,JuMP.getlowerbound(x),JuMP.getupperbound(x),:Cont, JuMP.getname(x))
-            othermap[x] = newx  #parent -> dummy parent in the child node
-            #@show x.col, "-->",newx.col
+            othermap[x] = newx  
         end
         push!(tape, JuMP.NodeData(ReverseDiffSparse.VARIABLE, newx.col, parent))
     end

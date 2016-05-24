@@ -13,5 +13,5 @@ elseif ARGS[1] == "Pips"
     using SerialPipsNlpInterface
     structJuMPSolve = SerialPipsNlpInterface.structJuMPSolve
 else
-    Base.warn("Known solvers are: Ipopt, ParPips, or Pips")
+    Base.error("Known solvers are: Ipopt, ParPips, or Pips")
 end
