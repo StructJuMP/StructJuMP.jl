@@ -248,7 +248,7 @@ function BendersBridge(m::Model, master_solver, sub_solver)
 
     for i = 1:length(m.ext[:Stochastic].children)
         (c,A,B,b,var_cones, constr_cones, v) = conicconstraintdata(m.ext[:Stochastic].children[i])
-        push!(c_all, c)
+        push!(c_all, getprobability(m)[i] * c)
         push!(A_all, A)
         push!(B_all, B)
         push!(b_all, b)

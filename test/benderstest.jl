@@ -11,7 +11,7 @@ socp_solver = ECOS.ECOSSolver()
 
 facts("[Benders] Empty scenario test") do
 
-    m = StructuredModel(0)
+    m = StructuredModel(num_scenarios=0)
     @defVar(m, x, Int)
     @addConstraint(m, x <= 4)
     @setObjective(m, :Min, -5*x)
@@ -26,7 +26,7 @@ end
 facts("[Benders] Infeasible problem test") do
 
     numScen = 1
-    m = StructuredModel(numScen)
+    m = StructuredModel(num_scenarios=numScen)
 
     @defVar(m, x, Int)
 
@@ -49,7 +49,7 @@ end
 facts("[Benders] Infeasibility cut execution test #1") do
 
     numScen = 1
-    m = StructuredModel(numScen)
+    m = StructuredModel(num_scenarios=numScen)
 
     @defVar(m, x, Int)
 
@@ -73,7 +73,7 @@ end
 facts("[Benders] Optimality cut execution test #1") do
 
     numScen = 1
-    m = StructuredModel(numScen)
+    m = StructuredModel(num_scenarios=numScen)
 
     @defVar(m, x, Int)
 
