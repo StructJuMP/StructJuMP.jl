@@ -1,14 +1,14 @@
 module StructJuMP
 
-# import MPI
+import MPI
 import JuMP # To reexport, should be using (not import)
 import MathProgBase
 import MathProgBase.MathProgSolverInterface
 import ReverseDiffSparse
 
 export StructuredModel, getStructure, getparent, getchildren, getProcIdxSet,
-       num_scenarios, @second_stage, getprobability
-
+       num_scenarios, @second_stage, getprobability, getMyRank
+       
 # ---------------
 # StructureData
 # ---------------
@@ -18,7 +18,8 @@ type StructureData
     children::Vector{JuMP.Model}
     parent
     num_scen::Int
-    othervars::Vector{JuMP.Variable}
+    # othervars::Vector{JuMP.Variable}
+    othermap::Dict{JuMP.Variable,JuMP.Variable}
 end
 
 default_probability(m::JuMP.Model) = 1 / num_scenarios(m)
@@ -46,7 +47,7 @@ function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, same_childr
       probability = Float64[]
       children = JuMP.Model[]
     end
-    m.ext[:Stochastic] = StructureData(probability, children, parent, num_scenarios, JuMP.Variable[])
+    m.ext[:Stochastic] = StructureData(Float64[], JuMP.Model[], parent, num_scenarios, Dict{JuMP.Variable,JuMP.Variable}())
     m
 end
 
@@ -59,6 +60,18 @@ getparent(m::JuMP.Model)      = getStructure(m).parent
 getchildren(m::JuMP.Model)    = getStructure(m).children
 getprobability(m::JuMP.Model) = getStructure(m).probability
 num_scenarios(m::JuMP.Model)  = getStructure(m).num_scen
+
+
+function getMyRank()
+    myrank = 0;
+    mysize = 1;
+    if isdefined(:MPI) && MPI.Initialized() && !MPI.Finalized()
+        comm = MPI.COMM_WORLD
+        mysize = MPI.Comm_size(comm)
+        myrank = MPI.Comm_rank(comm)
+    end
+    return myrank,mysize
+end
 
 function getProcIdxSet(numScens::Integer)
     mysize = 1;
