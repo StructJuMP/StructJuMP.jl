@@ -8,7 +8,7 @@ import ReverseDiffSparse
 
 export StructuredModel, getStructure, getparent, getchildren, getProcIdxSet,
        num_scenarios, @second_stage, getprobability, getMyRank
-       
+
 # ---------------
 # StructureData
 # ---------------
@@ -47,7 +47,7 @@ function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, same_childr
       probability = Float64[]
       children = JuMP.Model[]
     end
-    m.ext[:Stochastic] = StructureData(Float64[], JuMP.Model[], parent, num_scenarios, Dict{JuMP.Variable,JuMP.Variable}())
+    m.ext[:Stochastic] = StructureData(probability, children, parent, num_scenarios, Dict{JuMP.Variable,JuMP.Variable}())
     m
 end
 
