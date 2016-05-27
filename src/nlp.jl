@@ -4,9 +4,14 @@ function JuMP.parseNLExpr_runtime(m::JuMP.Model, x::JuMP.Variable, tape, parent:
     if x.m === m
         push!(tape, JuMP.NodeData(ReverseDiffSparse.VARIABLE, x.col, parent))
     else
-        others = getStructure(m).othervars
-        push!(others, x)
-        push!(tape, JuMP.NodeData(ReverseDiffSparse.EXTRA, length(others), parent))
+        othermap = getStructure(m).othermap
+        if haskey(othermap, x)
+            newx = othermap[x]
+        else
+            newx = JuMP.Variable(m,JuMP.getlowerbound(x),JuMP.getupperbound(x),:Cont, JuMP.getname(x))
+            othermap[x] = newx  
+        end
+        push!(tape, JuMP.NodeData(ReverseDiffSparse.VARIABLE, newx.col, parent))
     end
     nothing
 end
