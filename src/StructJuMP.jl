@@ -21,6 +21,7 @@ type StructureData
     num_scen::Int
     othermap::Dict{JuMP.Variable,JuMP.Variable}
     comm::MPI.Comm
+    userInitMPI::Bool
 end
 
 default_probability(m::JuMP.Model) = 1 / num_scenarios(m)
@@ -31,19 +32,27 @@ default_probability(::Void) = 1.0
 # ---------------
 
 # Constructor with the number of scenarios
-function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, same_children_as=nothing, id=0, num_scenarios::Int=0, prob::Float64=default_probability(parent))
+function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, same_children_as=nothing, id=0, comm=-1, num_scenarios::Int=0, prob::Float64=default_probability(parent))
     m = JuMP.Model(solver=solver)
+    userInitMPI = false
     if parent !== nothing
         @assert id != 0 
         stoch = getStructure(parent)
         stoch.children[id] = m
         push!(stoch.probability, prob)
         comm = stoch.comm
+        userInitMPI = stoch.userInitMPI
         @assert comm == MPI.COMM_WORLD
     else
         id = 0
-        MPI.Init()  #finalized in the StructJuMPSolverInterface.sj_solve
-        comm = MPI.COMM_WORLD
+        if isdefined(:MPI) && !MPI.Initialized() 
+            userInitMPI = false
+            MPI.Init() #finalized in the StructJuMPSolverInterface.sj_solve
+            comm = MPI.COMM_WORLD
+        else
+            userInitMPI = true
+            @assert comm !=-1
+        end
         JuMP.setsolvehook(m,StructJuMPSolverInterface.sj_solve)
     end
     if same_children_as !== nothing
@@ -56,7 +65,7 @@ function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, same_childr
       probability = Float64[]
       children = Dict{Int, JuMP.Model}()
     end
-    m.ext[:Stochastic] = StructureData(probability, children, parent, num_scenarios, Dict{JuMP.Variable,JuMP.Variable}(), comm)
+    m.ext[:Stochastic] = StructureData(probability, children, parent, num_scenarios, Dict{JuMP.Variable,JuMP.Variable}(), comm, userInitMPI)
     m
 end
 
