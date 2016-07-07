@@ -13,6 +13,25 @@ export StructuredModel, getStructure, getparent, getchildren, getProcIdxSet,
 # ---------------
 # StructureData
 # ---------------
+type MPIWrapper
+    comm::MPI.Comm
+    userInitMPI::Bool
+
+    function MPIWrapper(comm, user)
+        @show comm, user
+        mpi= new(comm,user)
+        finalizer(mpi, freeMPIWrapper)
+        return mpi
+    end
+end
+
+function freeMPIWrapper(mpi::MPIWrapper)
+    if isdefined(:MPI) && MPI.Initialized() && !MPI.Finalized()
+        if !mpi.userInitMPI
+            MPI.Finalize()
+        end
+    end
+end
 
 type StructureData
     probability::Vector{Float64}
@@ -20,8 +39,7 @@ type StructureData
     parent
     num_scen::Int
     othermap::Dict{JuMP.Variable,JuMP.Variable}
-    comm::MPI.Comm
-    userInitMPI::Bool
+    mpiWrapper::MPIWrapper
 end
 
 default_probability(m::JuMP.Model) = 1 / num_scenarios(m)
@@ -34,18 +52,10 @@ default_probability(::Void) = 1.0
 # Constructor with the number of scenarios
 function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, same_children_as=nothing, id=0, comm=-1, num_scenarios::Int=0, prob::Float64=default_probability(parent))
     m = JuMP.Model(solver=solver)
-    userInitMPI = false
-    if parent !== nothing
-        @assert id != 0 
-        stoch = getStructure(parent)
-        stoch.children[id] = m
-        push!(stoch.probability, prob)
-        comm = stoch.comm
-        userInitMPI = stoch.userInitMPI
-        @assert comm == MPI.COMM_WORLD
-    else
+    if parent == nothing
         id = 0
         if isdefined(:MPI) && !MPI.Initialized() 
+            @assert comm == -1
             userInitMPI = false
             MPI.Init() #finalized in the StructJuMPSolverInterface.sj_solve
             comm = MPI.COMM_WORLD
@@ -53,8 +63,16 @@ function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, same_childr
             userInitMPI = true
             @assert comm !=-1
         end
+        mpiWrapper = MPIWrapper(comm,userInitMPI)
         JuMP.setsolvehook(m,StructJuMPSolverInterface.sj_solve)
+    else
+        @assert id != 0 
+        stoch = getStructure(parent)
+        stoch.children[id] = m
+        push!(stoch.probability, prob)
+        mpiWrapper = stoch.mpiWrapper 
     end
+
     if same_children_as !== nothing
       if !isa(same_children_as, JuMP.Model) || !haskey(same_children_as.ext, :Stochastic)
         error("The JuMP model given for the argument `same_children_as' is not valid. Please create it using the `StructuredModel' function.")
@@ -65,7 +83,7 @@ function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, same_childr
       probability = Float64[]
       children = Dict{Int, JuMP.Model}()
     end
-    m.ext[:Stochastic] = StructureData(probability, children, parent, num_scenarios, Dict{JuMP.Variable,JuMP.Variable}(), comm, userInitMPI)
+    m.ext[:Stochastic] = StructureData(probability, children, parent, num_scenarios, Dict{JuMP.Variable,JuMP.Variable}(), mpiWrapper)
     m
 end
 
