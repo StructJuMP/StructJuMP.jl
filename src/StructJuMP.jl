@@ -18,7 +18,6 @@ type MPIWrapper
     userInitMPI::Bool
 
     function MPIWrapper(comm, user)
-        @show comm, user
         mpi= new(comm,user)
         finalizer(mpi, freeMPIWrapper)
         return mpi
@@ -52,7 +51,7 @@ default_probability(::Void) = 1.0
 # Constructor with the number of scenarios
 function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, same_children_as=nothing, id=0, comm=-1, num_scenarios::Int=0, prob::Float64=default_probability(parent))
     m = JuMP.Model(solver=solver)
-    if parent == nothing
+    if parent === nothing
         id = 0
         if isdefined(:MPI) && !MPI.Initialized() 
             @assert comm == -1
@@ -91,11 +90,11 @@ end
 # Get functions
 # -------------
 
-getStructure(m::JuMP.Model)  = m.ext[:Stochastic]
+getStructure(m::JuMP.Model)  = m.ext[:Stochastic]::StructureData
 getparent(m::JuMP.Model)      = getStructure(m).parent
-getchildren(m::JuMP.Model)    = getStructure(m).children
-getprobability(m::JuMP.Model) = getStructure(m).probability
-num_scenarios(m::JuMP.Model)  = getStructure(m).num_scen
+getchildren(m::JuMP.Model)    = getStructure(m).children::Dict{Int,JuMP.Model}
+getprobability(m::JuMP.Model) = getStructure(m).probability::Vector{Float64}
+num_scenarios(m::JuMP.Model)  = getStructure(m).num_scen::Int
 
 
 function getMyRank()
