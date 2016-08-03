@@ -1,8 +1,6 @@
 using StructJuMP, JuMP
 using StructJuMPSolverInterface
 
-include("select_solver.jl")
-
 #############
 # A sample model
 #############
@@ -14,8 +12,8 @@ m = StructuredModel(num_scenarios=scen)
     + 2.1*x[2]*x[3] + 2.2*x[2]*x[4] 
     + 3.1*x[3]*x[4])
 
-for i in 1:scen
-    bl = StructuredModel(parent=m)
+for i in getLocalChildrenIds(m)
+    bl = StructuredModel(parent=m, id=i)
     @variable(bl, -200<=y1[1:3]<=200)
     @NLconstraint(bl, -100<= 0.1*x[1] + 0.2*x[2]                          <= 100)
     @NLconstraint(bl, -101<=               1.1*x[2] + 1.2*x[3]            <= 101)
@@ -35,6 +33,4 @@ for i in 1:scen
     + 10.1*y1[2]*y1[3])
 end
 
-structJuMPSolve(m)
-
-getVarValue(m)
+solve(m, solver="PipsNlp")
