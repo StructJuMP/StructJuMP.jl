@@ -1,29 +1,45 @@
 module StructJuMP
 
-import MPI
-import JuMP # To reexport, should be using (not import)
+using JuMP # To reexport, should be using (not import)
 import MathProgBase
 import MathProgBase.MathProgSolverInterface
 import ReverseDiffSparse
-import StructJuMPSolverInterface
+
+# These modules could be optional.
+# import StructJuMPSolverInterface
+# import MPI
 
 export StructuredModel, getStructure, getparent, getchildren, getProcIdxSet,
        num_scenarios, @second_stage, getprobability, getMyRank
+# Macro to exportall
+macro exportall(pkg)
+    Expr(:export, names(JuMP)...)
+end
+@exportall JuMP
        
 # ---------------
 # StructureData
 # ---------------
-
-type StructureData
-    probability::Vector{Float64}
-    children::Dict{Int,JuMP.Model}
-    parent
-    num_scen::Int
-    othermap::Dict{JuMP.Variable,JuMP.Variable}
-    comm::MPI.Comm
-    userInitMPI::Bool
+if isdefined(:MPI)
+    type StructureData
+        probability::Vector{Float64}
+        children::Dict{Int,JuMP.Model}
+        parent
+        num_scen::Int
+        othermap::Dict{JuMP.Variable,JuMP.Variable}
+        comm::MPI.Comm
+        userInitMPI::Bool
+    end
+else
+    type StructureData
+        probability::Vector{Float64}
+        children::Dict{Int,JuMP.Model}
+        parent
+        num_scen::Int
+        othermap::Dict{JuMP.Variable,JuMP.Variable}
+        userInitMPI::Bool
+    end
 end
-
 default_probability(m::JuMP.Model) = 1 / num_scenarios(m)
 default_probability(::Void) = 1.0
 
@@ -40,9 +56,11 @@ function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, same_childr
         stoch = getStructure(parent)
         stoch.children[id] = m
         push!(stoch.probability, prob)
-        comm = stoch.comm
+        if isdefined(:MPI)
+            comm = stoch.comm
+            @assert comm == MPI.COMM_WORLD
+        end
         userInitMPI = stoch.userInitMPI
-        @assert comm == MPI.COMM_WORLD
     else
         id = 0
         if isdefined(:MPI) && !MPI.Initialized() 
@@ -51,9 +69,10 @@ function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, same_childr
             comm = MPI.COMM_WORLD
         else
             userInitMPI = true
-            @assert comm !=-1
         end
-        JuMP.setsolvehook(m,StructJuMPSolverInterface.sj_solve)
+        if isdefined(:StructJuMPSolverInterface)
+            JuMP.setsolvehook(m, StructJuMPSolverInterface.sj_solve)
+        end
     end
     if same_children_as !== nothing
       if !isa(same_children_as, JuMP.Model) || !haskey(same_children_as.ext, :Stochastic)
@@ -65,7 +84,11 @@ function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, same_childr
       probability = Float64[]
       children = Dict{Int, JuMP.Model}()
     end
-    m.ext[:Stochastic] = StructureData(probability, children, parent, num_scenarios, Dict{JuMP.Variable,JuMP.Variable}(), comm, userInitMPI)
+    if isdefined(:MPI)
+        m.ext[:Stochastic] = StructureData(probability, children, parent, num_scenarios, Dict{JuMP.Variable,JuMP.Variable}(), comm, userInitMPI)
+    else
+        m.ext[:Stochastic] = StructureData(probability, children, parent, num_scenarios, Dict{JuMP.Variable,JuMP.Variable}(), userInitMPI)
+    end
     m
 end
 
@@ -73,7 +96,7 @@ end
 # Get functions
 # -------------
 
-getStructure(m::JuMP.Model)  = m.ext[:Stochastic]
+getStructure(m::JuMP.Model)   = m.ext[:Stochastic]
 getparent(m::JuMP.Model)      = getStructure(m).parent
 getchildren(m::JuMP.Model)    = getStructure(m).children
 getprobability(m::JuMP.Model) = getStructure(m).probability
