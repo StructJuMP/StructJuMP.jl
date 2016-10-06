@@ -10,27 +10,45 @@ import StructJuMPSolverInterface
 export StructuredModel, getStructure, getparent, getchildren, getProcIdxSet,
        num_scenarios, @second_stage, getprobability, getMyRank
        
+
 # ---------------
 # StructureData
 # ---------------
 type MPIWrapper
     comm::MPI.Comm
-    userInitMPI::Bool
+    init::Function
 
-    function MPIWrapper(comm, user)
-        mpi= new(comm,user)
-        finalizer(mpi, freeMPIWrapper)
-        return mpi
+    function MPIWrapper()
+        instance = new(MPI.Comm(-1))
+        finalizer(instance, freeMPIWrapper)
+        
+        instance.init = function(ucomm::MPI.Comm)
+            if isdefined(:MPI) && MPI.Initialized() && ucomm.val == -1
+                instance.comm = MPI.COMM_WORLD
+            elseif isdefined(:MPI) && !MPI.Initialized()
+                MPI.Init()
+                instance.comm = MPI.COMM_WORLD
+            elseif isdefined(:MPI) && MPI.Initialized() && ucomm.val != -1
+                instance.comm = ucomm
+            elseif isdefined(:MPI) && MPI.Finalized()
+                error("MPI is already finalized!")
+            else
+                #doing nothing
+            end    
+        end 
+
+        return instance
     end
-end
 
-function freeMPIWrapper(mpi::MPIWrapper)
+end
+function freeMPIWrapper(instance::MPIWrapper)
     if isdefined(:MPI) && MPI.Initialized() && !MPI.Finalized()
-        if !mpi.userInitMPI
-            MPI.Finalize()
-        end
+        MPI.Finalize()
     end
 end
+
+const mpiWrapper = MPIWrapper();
+
 
 type StructureData
     probability::Vector{Float64}
@@ -49,27 +67,17 @@ default_probability(::Void) = 1.0
 # ---------------
 
 # Constructor with the number of scenarios
-function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, same_children_as=nothing, id=0, comm=-1, num_scenarios::Int=0, prob::Float64=default_probability(parent))
+function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, same_children_as=nothing, id=0, comm=MPI.Comm(-1), num_scenarios::Int=0, prob::Float64=default_probability(parent))
     m = JuMP.Model(solver=solver)
     if parent === nothing
         id = 0
-        if isdefined(:MPI) && !MPI.Initialized() 
-            @assert comm == -1
-            userInitMPI = false
-            MPI.Init() #finalized in the StructJuMPSolverInterface.sj_solve
-            comm = MPI.COMM_WORLD
-        else
-            userInitMPI = true
-            @assert comm !=-1
-        end
-        mpiWrapper = MPIWrapper(comm,userInitMPI)
+        mpiWrapper.init(comm)
         JuMP.setsolvehook(m,StructJuMPSolverInterface.sj_solve)
     else
         @assert id != 0 
         stoch = getStructure(parent)
         stoch.children[id] = m
         push!(stoch.probability, prob)
-        mpiWrapper = stoch.mpiWrapper 
     end
 
     if same_children_as !== nothing
