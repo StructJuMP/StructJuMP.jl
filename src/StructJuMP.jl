@@ -1,64 +1,79 @@
 module StructJuMP
 
-import MPI
-import JuMP # To reexport, should be using (not import)
+using JuMP # To reexport, should be using (not import)
 import MathProgBase
 import MathProgBase.MathProgSolverInterface
 import ReverseDiffSparse
-import StructJuMPSolverInterface
+
+# These modules could be optional.
+# import StructJuMPSolverInterface
+# import MPI
 
 export StructuredModel, getStructure, getparent, getchildren, getProcIdxSet,
        num_scenarios, @second_stage, getprobability, getMyRank
-       
+# Macro to exportall
+macro exportall(pkg)
+    Expr(:export, names(JuMP)...)
+end
+@exportall JuMP
+
 
 # ---------------
 # StructureData
 # ---------------
-type MPIWrapper
-    comm::MPI.Comm
-    init::Function
+if isdefined(:MPI)
+    type MPIWrapper
+        comm::MPI.Comm
+        init::Function
 
-    function MPIWrapper()
-        instance = new(MPI.Comm(-1))
-        finalizer(instance, freeMPIWrapper)
-        
-        instance.init = function(ucomm::MPI.Comm)
-            if isdefined(:MPI) && MPI.Initialized() && ucomm.val == -1
-                instance.comm = MPI.COMM_WORLD
-            elseif isdefined(:MPI) && !MPI.Initialized()
-                MPI.Init()
-                instance.comm = MPI.COMM_WORLD
-            elseif isdefined(:MPI) && MPI.Initialized() && ucomm.val != -1
-                instance.comm = ucomm
-            elseif isdefined(:MPI) && MPI.Finalized()
-                error("MPI is already finalized!")
-            else
-                #doing nothing
-            end    
-        end 
+        function MPIWrapper()
+            instance = new(MPI.Comm(-1))
+            finalizer(instance, freeMPIWrapper)
 
-        return instance
+            instance.init = function(ucomm::MPI.Comm)
+                if isdefined(:MPI) && MPI.Initialized() && ucomm.val == -1
+                    instance.comm = MPI.COMM_WORLD
+                elseif isdefined(:MPI) && !MPI.Initialized()
+                    MPI.Init()
+                    instance.comm = MPI.COMM_WORLD
+                elseif isdefined(:MPI) && MPI.Initialized() && ucomm.val != -1
+                    instance.comm = ucomm
+                elseif isdefined(:MPI) && MPI.Finalized()
+                    error("MPI is already finalized!")
+                else
+                    #doing nothing
+                end
+            end
+
+            return instance
+        end
+
+    end
+    function freeMPIWrapper(instance::MPIWrapper)
+        if isdefined(:MPI) && MPI.Initialized() && !MPI.Finalized()
+            MPI.Finalize()
+        end
     end
 
-end
-function freeMPIWrapper(instance::MPIWrapper)
-    if isdefined(:MPI) && MPI.Initialized() && !MPI.Finalized()
-        MPI.Finalize()
+    const mpiWrapper = MPIWrapper();
+
+    type StructureData
+        probability::Vector{Float64}
+        children::Dict{Int,JuMP.Model}
+        parent
+        num_scen::Int
+        othermap::Dict{JuMP.Variable,JuMP.Variable}
+        mpiWrapper::MPIWrapper
+    end
+else
+    type StructureData
+        probability::Vector{Float64}
+        children::Dict{Int,JuMP.Model}
+        parent
+        num_scen::Int
+        othermap::Dict{JuMP.Variable,JuMP.Variable}
     end
 end
-
-const mpiWrapper = MPIWrapper();
-
-
-type StructureData
-    probability::Vector{Float64}
-    children::Dict{Int,JuMP.Model}
-    parent
-    num_scen::Int
-    othermap::Dict{JuMP.Variable,JuMP.Variable}
-    mpiWrapper::MPIWrapper
-end
-
 default_probability(m::JuMP.Model) = 1 / num_scenarios(m)
 default_probability(::Void) = 1.0
 
@@ -71,8 +86,12 @@ function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, same_childr
     m = JuMP.Model(solver=solver)
     if parent === nothing
         id = 0
-        mpiWrapper.init(comm)
-        JuMP.setsolvehook(m,StructJuMPSolverInterface.sj_solve)
+        if isdefined(:MPI)
+            mpiWrapper.init(comm)
+        end
+        if isdefined(:StructJuMPSolverInterface)
+            JuMP.setsolvehook(m,StructJuMPSolverInterface.sj_solve)
+        end
     else
         @assert id != 0 
         stoch = getStructure(parent)
@@ -90,7 +109,11 @@ function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, same_childr
       probability = Float64[]
       children = Dict{Int, JuMP.Model}()
     end
-    m.ext[:Stochastic] = StructureData(probability, children, parent, num_scenarios, Dict{JuMP.Variable,JuMP.Variable}(), mpiWrapper)
+    if isdefined(:MPI)
+        m.ext[:Stochastic] = StructureData(probability, children, parent, num_scenarios, Dict{JuMP.Variable,JuMP.Variable}(), mpiWrapper)
+    else
+        m.ext[:Stochastic] = StructureData(probability, children, parent, num_scenarios, Dict{JuMP.Variable,JuMP.Variable}())
+    end
     m
 end
 
@@ -98,7 +121,7 @@ end
 # Get functions
 # -------------
 
-getStructure(m::JuMP.Model)  = m.ext[:Stochastic]::StructureData
+getStructure(m::JuMP.Model)   = m.ext[:Stochastic]::StructureData
 getparent(m::JuMP.Model)      = getStructure(m).parent
 getchildren(m::JuMP.Model)    = getStructure(m).children::Dict{Int,JuMP.Model}
 getprobability(m::JuMP.Model) = getStructure(m).probability::Vector{Float64}
