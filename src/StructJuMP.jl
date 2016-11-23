@@ -60,7 +60,7 @@ if isdefined(:MPI)
     const mpiWrapper = MPIWrapper();
 
     type StructureData
-        probability::Vector{Float64}
+        probability::Dict{Int,Float64}
         children::Dict{Int,JuMP.Model}
         parent
         num_scen::Int
@@ -69,7 +69,7 @@ if isdefined(:MPI)
     end
 else
     type StructureData
-        probability::Vector{Float64}
+        probability::Dict{Int,Float64}
         children::Dict{Int,JuMP.Model}
         parent
         num_scen::Int
@@ -95,10 +95,10 @@ function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, same_childr
             JuMP.setsolvehook(m,StructJuMPSolverInterface.sj_solve)
         end
     else
-        @assert id != 0 
+        @assert id != 0
         stoch = getStructure(parent)
         stoch.children[id] = m
-        push!(stoch.probability, prob)
+        stoch.probability[id] = prob
     end
 
     if same_children_as !== nothing
@@ -108,7 +108,7 @@ function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, same_childr
       probability = same_children_as.ext[:Stochastic].probability
       children = same_children_as.ext[:Stochastic].children
     else
-      probability = Float64[]
+      probability = Dict{Int, Float64}()
       children = Dict{Int, JuMP.Model}()
     end
     if isdefined(:MPI)
