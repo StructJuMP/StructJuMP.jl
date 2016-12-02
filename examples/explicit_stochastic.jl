@@ -21,7 +21,7 @@ m = StructuredModel()
 
 s0 = StructuredModel(parent=m)
 @defStochasticVar(s0, 0 <= y[TESTTIME,GEN] <= 1)
-@setObjective(s0, Min, FIXEDGENCOST*sum{y[t,j], t=TESTTIME,j=GEN})
+@JuMP.setobjective(s0, Min, FIXEDGENCOST*sum{y[t,j], t=TESTTIME,j=GEN})
 
 for it in 1:NUMSTAGES
     st = StructuredModel(parent=s0)
@@ -31,38 +31,38 @@ for it in 1:NUMSTAGES
     @defStochasticVar(st, -Pmax[i] <= P[TESTTIME,i=LIN] <= Pmax[i])
     for t in TESTTIME
         for j in BUS
-            @addConstraint(st, ( sum{P[t,i], i=LIN; j==rec_bus[i]}
+            @constraint(st, ( sum{P[t,i], i=LIN; j==rec_bus[i]}
                                 -sum{P[t,i], i=LIN; j==snd_bus[i]}
                                 +sum{Pgen[t,i], i=GEN; j==bus_gen[i]}
                                 -sum{Pload[t,i], i=LOAD; j==bus_load[i]}
                                 +sum{wind_total[node,t]*wind_share[i]-Pwind[t,i], i=WIND; j==bus_wind[i]}
                                 == 0))
         end
-        @addConstraint(st, theta[t,ref_bus] == 0)
+        @constraint(st, theta[t,ref_bus] == 0)
         for i in LIN
-            @addConstraint(st, X[i]*P[t,i] - V[i]^2*(theta[t,snd_bus[i]]-theta[t,rec_bus[i]])/THETASCALE == 0)
+            @constraint(st, X[i]*P[t,i] - V[i]^2*(theta[t,snd_bus[i]]-theta[t,rec_bus[i]])/THETASCALE == 0)
         end
     end
     # ramp constraints
     for t in HORIZON
         for i in GEN
-            @addConstraint(st, -max_ur[i] <= Pgen[t,i] - Pgen[t+1,i] <= max_ur[i]) # range constraint, beware...
+            @constraint(st, -max_ur[i] <= Pgen[t,i] - Pgen[t+1,i] <= max_ur[i]) # range constraint, beware...
         end
     end
 
     for i in GEN
-        @addConstraint(st, -max_ur[i] <= Pgen[1,i] - Pgen_init[i] <= max_ur[i])
+        @constraint(st, -max_ur[i] <= Pgen[1,i] - Pgen_init[i] <= max_ur[i])
     end
 
     # linking constraints
     # gen[s,t,j] <= np_cap[j]*y[t,j]
     for t in TESTTIME
         for j in GEN
-            @addConstraint(st, -np_cap[j] <= Pgen[t,j] - np_cap[j]*y[t,j] <= 0) # should wrap the call to y in an ancestor-type thing
+            @constraint(st, -np_cap[j] <= Pgen[t,j] - np_cap[j]*y[t,j] <= 0) # should wrap the call to y in an ancestor-type thing
         end
     end
 
     # need Exp here for earlier sml versions
-    @setObjective(st, Min, sum{COSTSCALE*gen_cost[i]*Pgen[t,i], t=TESTTIME, i=GEN})
+    @JuMP.setobjective(st, Min, sum{COSTSCALE*gen_cost[i]*Pgen[t,i], t=TESTTIME, i=GEN})
 
 end
