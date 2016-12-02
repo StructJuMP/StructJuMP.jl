@@ -31,20 +31,20 @@ wastecost = 4
 @defStochasticVar(m, profit)
 
 @defStochasticVar(m, received[centers] >= 0)
-@setObjective(m, Max, -sum{transcost[i,j]*ship[i,j], i=factories, j=centers} + sum{prodcost*product[i], i=factories})
+@JuMP.setobjective(m, Max, -sum{transcost[i,j]*ship[i,j], i=factories, j=centers} + sum{prodcost*product[i], i=factories})
 for j in centers
-    @addConstraint(m, received[j] == sum{ship[i,j], i=factories})
+    @constraint(m, received[j] == sum{ship[i,j], i=factories})
 end
 for i in factories
-    @addConstraint(m, product[i] == sum{ship[i,j], j=centers})
+    @constraint(m, product[i] == sum{ship[i,j], j=centers})
 end
 
 for (s, elem) in enumerate(scenarios)
     bl = StructuredModel(parent=m)
     @defStochasticVar(bl, 0 <= salesw[i=centers] <= demand[i,s])
     @defStochasticVar(bl, wastew[centers] >= 0)
-    @setObjective(bl, Max, sum{price*prob[s]*salesw[j], j=centers} - sum{wastecost*prob[s]*wastew[j], j=centers})
+    @JuMP.setobjective(bl, Max, sum{price*prob[s]*salesw[j], j=centers} - sum{wastecost*prob[s]*wastew[j], j=centers})
     for j in centers
-        @addConstraint(bl, received[j] == salesw[j]+wastew[j])
+        @constraint(bl, received[j] == salesw[j]+wastew[j])
     end
 end
