@@ -38,4 +38,4 @@ Problems modeled in StructJuMP models can be solved in parallel using the [PIPS-
 [Stochastic Dual Dynamic Programming](https://github.com/blegat/StochasticDualDynamicProgramming.jl) can read multi-stage models from StructJuMP.
 
 ## Acknowledgements
-StructJuMP has been developed under the financial support of Department of Energy (DOE), Office of Advanced Scientific Computing Research, Office of Electricity Delivery and Energy Reliability, and Grid Modernization Laboratory Consortium (GMLC) (PIs: Cosmin G. Petra and Mihai Anitescu, Argonne National Laboratory).
+StructJuMP has been developed under the financial support of Department of Energy (DOE), Office of Advanced Scientific Computing Research, Office of Electricity Delivery and Energy Reliability, and Grid Modernization Laboratory Consortium (GMLC) (PIs: Cosmin G. Petra, Lawrence Livermore National Laboratory and Mihai Anitescu, Argonne National Laboratory).
