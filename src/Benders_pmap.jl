@@ -99,7 +99,7 @@ function loadMasterProblem(c, A, b, K, C, v, num_scen, solver)
         end
     end
 
-    #MathProgBase.setvartype!(getInternalModel(master_model), [v;[:Cont for i = 1:num_scen]])
+    #setcategory(master_model, [v;[:Cont for i = 1:num_scen]])
     return master_model, x, θ
 end
 
@@ -116,7 +116,7 @@ function addCuttingPlanes(master_model, num_scen, A_all, b_all, output, x, θ, s
             # output[i][2] is a ray
             # so alpha * output[i][2] is also valid for any alpha >= 0.
             # Hence output[i][2] might have very large coefficients and alter
-            # the numerial accuracy of the master's solver.
+            # the numerical accuracy of the master's solver.
             # We scale it to avoid this issue
             scaling = abs(rhs)
             if scaling == 0
@@ -137,7 +137,6 @@ function addCuttingPlanes(master_model, num_scen, A_all, b_all, output, x, θ, s
 end
 
 function Benders_pmap(c_all, A_all, B_all, b_all, K_all, C_all, v, master_solver, sub_solver, TOL=1e-5)
-
     println("Benders pmap started")
     num_master_var = length(c_all[1])
     num_scen = length(c_all) - 1

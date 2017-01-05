@@ -1,8 +1,7 @@
 # Farmer example from Birge and Louveaux book.
 # copied from DSPSolver.jl/examples/farmer.jl then updated
 
-# Model Data
-# STOCHASTIC MODELING FRAMEWORK
+using StructJuMP
 
 NS = 3;                        # number of scenarios
 probability = [1/3, 1/3, 1/3]; # probability
@@ -71,3 +70,9 @@ for s in 1:NS
 end
 
 print(m)
+
+# FIXME
+using Clp
+solver = ClpSolver()
+include("../src/BendersBridge.jl")
+BendersBridge(m, solver, solver)
