@@ -126,7 +126,7 @@ end
 getStructure(m::JuMP.Model)   = m.ext[:Stochastic]::StructureData
 getparent(m::JuMP.Model)      = getStructure(m).parent
 getchildren(m::JuMP.Model)    = getStructure(m).children::Dict{Int,JuMP.Model}
-getprobability(m::JuMP.Model) = getStructure(m).probability::Vector{Float64}
+getprobability(m::JuMP.Model) = getStructure(m).probability::Dict{Int, Float64}
 num_scenarios(m::JuMP.Model)  = getStructure(m).num_scen::Int
 
 
