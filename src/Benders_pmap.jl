@@ -49,26 +49,26 @@ function loadMasterProblem(c, A, b, K, C, v, num_scen, solver)
     num_var = length(c)
     # load master problem
     master_model = Model(solver=solver)
-    @defVar(master_model, x[1:num_var])
+    @variable(master_model, x[1:num_var])
     for i = 1:num_var
-        setCategory(x[i], v[i])
+        setcategory(x[i], v[i])
     end
     # add new objective variables for scenarios
     # we assume the objective is sum of nonnegative terms
-    @defVar(master_model, θ[1:num_scen] >= 0.0)
-    @setObjective(master_model, Min, sum{c[i]*x[i], i in 1:num_var} + sum(θ))
+    @variable(master_model, θ[1:num_scen] >= 0.0)
+    @objective(master_model, :Min, sum(c[i]*x[i] for i in 1:num_var) + sum(θ))
     # add constraint cones
     for (cone, ind) in K
         for i in 1:length(ind)
             if cone == :Zero
-                @addConstraint(master_model, dot(A[ind[i],:], x) == b[ind[i]])
+                @constraint(master_model, dot(A[ind[i],:], x) == b[ind[i]])
             elseif cone == :NonNeg
-                @addConstraint(master_model, dot(A[ind[i],:], x) <= b[ind[i]])
+                @constraint(master_model, dot(A[ind[i],:], x) <= b[ind[i]])
             elseif cone == :NonPos
-                @addConstraint(master_model, dot(A[ind[i],:], x) >= b[ind[i]])
+                @constraint(master_model, dot(A[ind[i],:], x) >= b[ind[i]])
             elseif cone == :SOC
-                @addConstraint(master_model, norm(b[ind[2:end-1]] - A[ind[2:end-1],:]*x) .<= b[ind[1]] - A[ind[1],:]*x)
-                @addConstraint(master_model, dot(A[ind[1],:], x) <= b[ind[1]])
+                @constraint(master_model, norm(b[ind[2:end-1]] - A[ind[2:end-1],:]*x) .<= b[ind[1]] - A[ind[1],:]*x)
+                @constraint(master_model, dot(A[ind[1],:], x) <= b[ind[1]])
             else
                 error("unrecognized cone $cone")
             end
@@ -78,22 +78,22 @@ function loadMasterProblem(c, A, b, K, C, v, num_scen, solver)
     for (cone, ind) in C
         if cone == :Zero
             for i in ind
-                setLower(x[i], 0.0)
-                setUpper(x[i], 0.0)
+                setlowerbound(x[i], 0.0)
+                setupperbound(x[i], 0.0)
             end
         elseif cone == :Free
             # do nothing
         elseif cone == :NonNeg
             for i in ind
-                setLower(x[i], 0.0)
+                setlowerbound(x[i], 0.0)
             end
         elseif cone == :NonPos
             for i in ind
-                setUpper(x[i], 0.0)
+                setupperbound(x[i], 0.0)
             end
         elseif cone == :SOC
-            @addConstraint(master_model, norm(x[ind[2:end-1]]) <= x[ind[1]])
-            setLower(x[ind[1]], 0.0)
+            @constraint(master_model, norm(x[ind[2:end-1]]) <= x[ind[1]])
+            setlowerbound(x[ind[1]], 0.0)
         else
             error("unrecognized cone $cone")
         end
@@ -122,12 +122,12 @@ function addCuttingPlanes(master_model, num_scen, A_all, b_all, output, x, θ, s
             if scaling == 0
               scaling = maximum(coef)
             end
-            @addConstraint(master_model, dot(coef/scaling, x) <= sign(rhs))
+            @constraint(master_model, dot(coef/scaling, x) <= sign(rhs))
             cut_added = true
         # add an optimality cut
         else
-            if getValue(θ[i]) < (dot(coef, separator) - rhs)[1] - TOL
-                @addConstraint(master_model, dot(coef, x) - θ[i] <= rhs)
+            if getvalue(θ[i]) < (dot(coef, separator) - rhs)[1] - TOL
+                @constraint(master_model, dot(coef, x) - θ[i] <= rhs)
                 cut_added = true
             end
         end
@@ -160,17 +160,23 @@ function Benders_pmap(c_all, A_all, B_all, b_all, K_all, C_all, v, master_solver
         if status == :Infeasible
             break
         end
-        objval = getObjectiveValue(master_model)
+        objval = getobjectivevalue(master_model)
         separator = zeros(num_master_var)
         for i = 1:num_master_var
-            separator[i] = getValue(x[i])
+            separator[i] = getvalue(x[i])
         end 
         new_rhs = [zeros(num_bins[i]) for i in 1:num_scen]
         for i = 1:num_scen
             new_rhs[i] = b_all[i+1] - A_all[i+1] * separator
         end
 
-        output = pmap((a1,a2,a3,a4,a5,a6)->loadAndSolveConicProblem(a1,a2,a3,a4,a5,a6), [c_all[i+1] for i = 1:num_scen], [B_all[i] for i = 1:num_scen], [new_rhs[i] for i = 1:num_scen], [K_all[i+1] for i = 1:num_scen], [C_all[i+1] for i = 1:num_scen], [sub_solver for i = 1:num_scen])
+        output = pmap(loadAndSolveConicProblem, 
+            [c_all[i+1] for i = 1:num_scen], 
+            [B_all[i] for i = 1:num_scen], 
+            [new_rhs[i] for i = 1:num_scen], 
+            [K_all[i+1] for i = 1:num_scen], 
+            [C_all[i+1] for i = 1:num_scen], 
+            [sub_solver for i = 1:num_scen])
 
         #@show output
         cut_added = addCuttingPlanes(master_model, num_scen, A_all, b_all, output, x, θ, separator, TOL)
