@@ -2,16 +2,16 @@ using StructJuMP
 
 m = StructuredModel()
 
-@defStochasticVar(m, xh0[ASSETS] >= 0)
-@defStochasticVar(m, xb0[ASSETS] >= 0)
+@variable(m, xh0[ASSETS] >= 0)
+@variable(m, xb0[ASSETS] >= 0)
 @constraint(m, (1+Ct)*sum(val[j]*xb0[j] for j=ASSETS) <= BUDGET)
 
 for n1 in NODES
     if PARENT[n1] == 0
         sub = StructuredModel(parent=m)
-        @defStochasticVar(sub, xh1[ASSETS] >= 0)
-        @defStochasticVar(sub, xb1[ASSETS] >= 0)
-        @defStochasticVar(sub, xs1[ASSETS] >= 0)
+        @variable(sub, xh1[ASSETS] >= 0)
+        @variable(sub, xb1[ASSETS] >= 0)
+        @variable(sub, xs1[ASSETS] >= 0)
         for j in ASSETS
             @constraint(sub, xh1[j] == (1+Ret[n1,j])*xh0[j]+xb1[j]-xs1[j])
         end
@@ -21,14 +21,14 @@ for n1 in NODES
     for n2 in NODES
         if PARENT[n2] == n1
             sub = StructuredModel(parent=m)
-            @defStochasticVar(sub, xh2[ASSETS] >= 0)
-            @defStochasticVar(sub, xb2[ASSETS] >= 0)
-            @defStochasticVar(sub, xs2[ASSETS] >= 0)
+            @variable(sub, xh2[ASSETS] >= 0)
+            @variable(sub, xb2[ASSETS] >= 0)
+            @variable(sub, xs2[ASSETS] >= 0)
             for j in ASSETS
                 @constraint(sub, xh2[j] == (1+Ret2[n2,j])*xh1[j] + xb2[j] - xs2[j])
             end
             @constraint(sub, (1-Ct)*sum(val[j]*xs2[j] for j=ASSETS) == Liability2 + (1+Ct)*sum(val[j]*xb2[j]))
-            @defStochasticVar(sub, wealth)
+            @variable(sub, wealth)
             @constraint(sub, wealth == Prob[n1]*Prob[n2]*sum(val[j]*xh2[j] for j=ASSETS))
             @objective(sub, mu - Rho*((wealth^2-mu^2))*Prob[n1]*Prob[n2])
         end

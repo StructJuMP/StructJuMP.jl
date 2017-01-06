@@ -2,9 +2,9 @@ using StructJuMP
 
 m = StructuredModel()
 
-@defStochasticVar(m, xh[ASSETS] >= 0)
-@defStochasticVar(m, xb[ASSETS] >= 0)
-@defStochasticVar(m, xs[ASSETS] >= 0)
+@variable(m, xh[ASSETS] >= 0)
+@variable(m, xb[ASSETS] >= 0)
+@variable(m, xs[ASSETS] >= 0)
 
 # Stage 0
 sub = StructuredModel(parent=m)

@@ -17,18 +17,18 @@ ref_bus = 1
 
 m = StructuredModel()
 
-@defStochasticVar(m, dummyV >= 0)
+@variable(m, dummyV >= 0)
 
 s0 = StructuredModel(parent=m)
-@defStochasticVar(s0, 0 <= y[TESTTIME,GEN] <= 1)
+@variable(s0, 0 <= y[TESTTIME,GEN] <= 1)
 @objective(s0, :Min, FIXEDGENCOST*sum(y[t,j] for t=TESTTIME,j=GEN))
 
 for it in 1:NUMSTAGES
     st = StructuredModel(parent=s0)
-    @defStochasticVar(st, 0 <= Pgen[TESTTIME,j=GEN] <= np_cap[j])
-    @defStochasticVar(st, 0 <= Pwind[t=TESTTIME,j=WIND] <= wind_total[node,t]*wind_share[j])
-    @defStochasticVar(st, -THETASCALE*π/2 <= theta[TESTTIME,j=BUS] <= THETASCALE*π/2)
-    @defStochasticVar(st, -Pmax[i] <= P[TESTTIME,i=LIN] <= Pmax[i])
+    @variable(st, 0 <= Pgen[TESTTIME,j=GEN] <= np_cap[j])
+    @variable(st, 0 <= Pwind[t=TESTTIME,j=WIND] <= wind_total[node,t]*wind_share[j])
+    @variable(st, -THETASCALE*π/2 <= theta[TESTTIME,j=BUS] <= THETASCALE*π/2)
+    @variable(st, -Pmax[i] <= P[TESTTIME,i=LIN] <= Pmax[i])
     for t in TESTTIME
         for j in BUS
             @constraint(st, ( sum(P[t,i] for i=LIN; j==rec_bus[i])
