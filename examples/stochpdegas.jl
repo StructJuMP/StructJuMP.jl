@@ -44,13 +44,13 @@ for k in SCEN
     @constraint(m, cost[k] - nu <= phi[k])
 end
 
-@JuMP.setobjective(m, (1-lambda)*mcost + lambda*cvarcost)
+@objective(m, (1-lambda)*mcost + lambda*cvarcost)
 
 for k in SCEN, i in NODE, t in TIME
-    @constraint(m, sum{fout[k,j,t], j=LINK; j.lendoc==i} 
-                    + sum{s[k,j,t], j=SUP; j.sloc==i}
-                    - sum{fin[k,j,t], j=LINK; j.lstartloc==i}
-                    - sum{dem[k,j,t], j=DEM; j.dloc==i} == 0)
+    @constraint(m, sum(fout[k,j,t] for j=LINK if j.lendoc==i)
+                    + sum(s[k,j,t] for j=SUP if j.sloc==i)
+                    - sum(fin[k,j,t] for j=LINK if j.lstartloc==i)
+                    - sum(dem[k,j,t] for j=DEM if j.dloc==i) == 0)
 end
 
 for j in SCEN, i in LINK, t in TIMEm, k in 1:(Nx-1)

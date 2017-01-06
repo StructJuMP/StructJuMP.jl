@@ -4,7 +4,7 @@ m = StructuredModel()
 
 @defStochasticVar(m, xh0[ASSETS] >= 0)
 @defStochasticVar(m, xb0[ASSETS] >= 0)
-@constraint(m, (1+Ct)*sum{val[j]*xb0[j], j=ASSETS} <= BUDGET)
+@constraint(m, (1+Ct)*sum(val[j]*xb0[j] for j=ASSETS) <= BUDGET)
 
 for n1 in NODES
     if PARENT[n1] == 0
@@ -15,7 +15,7 @@ for n1 in NODES
         for j in ASSETS
             @constraint(sub, xh1[j] == (1+Ret[n1,j])*xh0[j]+xb1[j]-xs1[j])
         end
-        @constraint(sub, (1-Ct)*sum{val[j]*xs1[j], j=ASSETS} == Liability1 + (1+Ct)*sum{val[j]*xb1[j]})
+        @constraint(sub, (1-Ct)*sum(val[j]*xs1[j] for j=ASSETS) == Liability1 + (1+Ct)*sum(val[j]*xb1[j]))
     end
 
     for n2 in NODES
@@ -27,15 +27,15 @@ for n1 in NODES
             for j in ASSETS
                 @constraint(sub, xh2[j] == (1+Ret2[n2,j])*xh1[j] + xb2[j] - xs2[j])
             end
-            @constraint(sub, (1-Ct)*sum{val[j]*xs2[j], j=ASSETS} == Liability2 + (1+Ct)*sum{val[j]*xb2[j]})
+            @constraint(sub, (1-Ct)*sum(val[j]*xs2[j] for j=ASSETS) == Liability2 + (1+Ct)*sum(val[j]*xb2[j]))
             @defStochasticVar(sub, wealth)
-            @constraint(sub, wealth == Prob[n1]*Prob[n2]*sum{val[j]*xh2[j], j=ASSETS})
-            @JuMP.setobjective(sub, mu - Rho*((wealth^2-mu^2))*Prob[n1]*Prob[n2])
+            @constraint(sub, wealth == Prob[n1]*Prob[n2]*sum(val[j]*xh2[j] for j=ASSETS))
+            @objective(sub, mu - Rho*((wealth^2-mu^2))*Prob[n1]*Prob[n2])
         end
     end
 end
 
-@constraint(m, sum{Prob[n1]*Prob[n2]*wealth[(n1,n2)], n1=NODES, n2=NODES; PARENT[n1]==0 && PARENT[n2]==n1})
+@constraint(m, sum(Prob[n1]*Prob[n2]*wealth[(n1,n2)] for n1=NODES n2=NODES if PARENT[n1]==0 && PARENT[n2]==n1))
 
 # things of note:
 # Block(parent::Union(Model,Block), index) constructor

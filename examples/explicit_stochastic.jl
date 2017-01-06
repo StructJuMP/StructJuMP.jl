@@ -21,7 +21,7 @@ m = StructuredModel()
 
 s0 = StructuredModel(parent=m)
 @defStochasticVar(s0, 0 <= y[TESTTIME,GEN] <= 1)
-@JuMP.setobjective(s0, Min, FIXEDGENCOST*sum{y[t,j], t=TESTTIME,j=GEN})
+@objective(s0, :Min, FIXEDGENCOST*sum(y[t,j] for t=TESTTIME,j=GEN))
 
 for it in 1:NUMSTAGES
     st = StructuredModel(parent=s0)
@@ -31,11 +31,11 @@ for it in 1:NUMSTAGES
     @defStochasticVar(st, -Pmax[i] <= P[TESTTIME,i=LIN] <= Pmax[i])
     for t in TESTTIME
         for j in BUS
-            @constraint(st, ( sum{P[t,i], i=LIN; j==rec_bus[i]}
-                                -sum{P[t,i], i=LIN; j==snd_bus[i]}
-                                +sum{Pgen[t,i], i=GEN; j==bus_gen[i]}
-                                -sum{Pload[t,i], i=LOAD; j==bus_load[i]}
-                                +sum{wind_total[node,t]*wind_share[i]-Pwind[t,i], i=WIND; j==bus_wind[i]}
+            @constraint(st, ( sum(P[t,i] for i=LIN; j==rec_bus[i])
+                                -sum(P[t,i] for i=LIN; j==snd_bus[i])
+                                +sum(Pgen[t,i] for i=GEN; j==bus_gen[i])
+                                -sum(Pload[t,i] for i=LOAD; j==bus_load[i])
+                                +sum(wind_total[node,t]*wind_share[i]-Pwind[t,i] for i=WIND; j==bus_wind[i])
                                 == 0))
         end
         @constraint(st, theta[t,ref_bus] == 0)
@@ -63,6 +63,6 @@ for it in 1:NUMSTAGES
     end
 
     # need Exp here for earlier sml versions
-    @JuMP.setobjective(st, Min, sum{COSTSCALE*gen_cost[i]*Pgen[t,i], t=TESTTIME, i=GEN})
+    @objective(st, :Min, sum(COSTSCALE*gen_cost[i]*Pgen[t,i] for t=TESTTIME, i=GEN))
 
 end

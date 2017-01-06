@@ -72,7 +72,7 @@ end
 print(m)
 
 # FIXME
-using Clp
-solver = ClpSolver()
-include("../src/BendersBridge.jl")
-BendersBridge(m, solver, solver)
+#using Clp
+#solver = ClpSolver()
+#include("../src/BendersBridge.jl")
+#BendersBridge(m, solver, solver)
