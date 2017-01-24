@@ -62,7 +62,7 @@ function solveStochastic(m::Model)
     stoch = getStructure(m)
     @assert stoch.parent == nothing # make sure we're at the master problem
 
-    variable(m, θ) # hopefully this name doesn't conflict...
+    @variable(m, θ) # hopefully this name doesn't conflict...
 
     master_stat solve(m)
     @assert master_stat == :Optimal
