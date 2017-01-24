@@ -3,30 +3,30 @@ using StructJuMP
 m = StructuredModel()
 
 n = 10
-@defVar(m, x[1:n] >= 0)
-@defVar(m, y[1:n] >= 0)
+@variable(m, x[1:n] >= 0)
+@variable(m, y[1:n] >= 0)
 for i in 1:n
-    @addConstraint(m, x[i] - y[i] <= i)
+    @constraint(m, x[i] - y[i] <= i)
 end
 
 p = 3
 q = 2
 for s = 1:p
     bl = StructuredModel(parent=m)
-    @defVar(bl, z[1:n] >= 0)
-    @addConstraint(bl, x + sum{z[i], i=1:n} == 1)
+    @variable(bl, z[1:n] >= 0)
+    @constraint(bl, x + sum(z[i] for i=1:n) == 1)
     for t = 1:q
         bll = StructuredModel(parent=bl)
-        @defVar(bll, w[1:n] >= 0)
-        @addConstraint(bll, sum{w[i], i=1:n; iseven(i)} == 1)
+        @variable(bll, w[1:n] >= 0)
+        @constraint(bll, sum(w[i] for i=1:n if iseven(i)) == 1)
         par = parent(bll)
-        @addConstraint(bll, sum{z[i], i=1:n} - sum{w[i], i=1:n} >= 0)
-        @addConstraint(bll, sum{z[i], i=1:n} >= 0)
-        @addConstraint(bll, 0 >= sum{w[i], i=1:n})
+        @constraint(bll, sum(z[i] for i=1:n) - sum(w[i] for i=1:n) >= 0)
+        @constraint(bll, sum(z[i] for i=1:n) >= 0)
+        @constraint(bll, 0 >= sum(w[i] for i=1:n))
     end
 end
 
-@addConstraint(m, sum{z, bl in children(m), z=getVar(bl,:z)} == 1)
+@constraint(m, sum(z for bl in children(m), z=getVar(bl,:z)) == 1)
 
 
-sum{indx; cond(indx)} (models[indx].y[1] + x[1]) = 0
+#sum(indx for cond(indx)) (models[indx].y[1] + x[1]) = 0

@@ -1,15 +1,15 @@
-using StructJuMP, JuMP
+using StructJuMP
 
 firststage = StructuredModel()
-@defVar(firststage, x[1:2])
-@setNLObjective(firststage, Min, (x[1]+x[2])^2)
-@addNLConstraint(firststage, x[1] * x[2] == 10)
+@variable(firststage, x[1:2])
+@objective(firststage, :Min, (x[1]+x[2])^2)
+@NLConstraint(firststage, x[1] * x[2] == 10)
 
 for scen in 1:2
     bl = StructuredModel(parent=firststage)
-    @defVar(bl, y)
-    @addConstraint(bl, x[2]^2 + x[1]*y ≤ 5)
-    @setNLObjective(bl, Min, (x[1]+x[2])*y)
+    @variable(bl, y)
+    @constraint(bl, x[2]^2 + x[1]*y ≤ 5)
+    @NLobjective(bl, :Min, (x[1]+x[2])*y)
 end
 
 solve(firststage)
