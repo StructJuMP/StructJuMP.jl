@@ -33,7 +33,7 @@ facts("[Benders] Infeasible problem test") do
     @constraint(m, x <= 1)
     @objective(m, :Min, -5*x)
 
-    bl = StructuredModel(parent=m)
+    bl = StructuredModel(parent=m, id=1)
     @variable(bl, y1 >= 2)
     @variable(bl, y2 <= 2)
     @constraint(bl, x >= y1)
@@ -56,7 +56,7 @@ facts("[Benders] Infeasibility cut execution test #1") do
     @constraint(m, x <= 4)
     @objective(m, :Min, -5*x)
 
-    bl = StructuredModel(parent=m)
+    bl = StructuredModel(parent=m, id=1)
     @variable(bl, y1 >= 0)
     @variable(bl, y2 <= 2)
     @constraint(bl, x <= y1)
@@ -80,7 +80,7 @@ facts("[Benders] Optimality cut execution test #1") do
     @constraint(m, x <= 4)
     @objective(m, :Min, -5*x)
 
-    bl = StructuredModel(parent=m)
+    bl = StructuredModel(parent=m, id=1)
     @variable(bl, y1 >= 2)
     @variable(bl, y2 <= 4)
     @constraint(bl, x <= y1)
