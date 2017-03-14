@@ -1,15 +1,15 @@
 using JuMP
 using StructJuMP
 using ECOS
-using FactCheck
 using Cbc
+using Base.Test
 
 include("../src/BendersBridge.jl")
 
 misocp_solver = CbcSolver()
 socp_solver = ECOS.ECOSSolver()
 
-facts("[Benders] Empty scenario test") do
+@testset "[Benders] Empty scenario test" begin
 
     m = StructuredModel(num_scenarios=0)
     @variable(m, x, Int)
@@ -18,12 +18,12 @@ facts("[Benders] Empty scenario test") do
 
     output = BendersBridge(m, misocp_solver, socp_solver)
 
-    @fact output[1] --> :Optimal
-    @fact output[2] --> roughly(-20.0)
+    @test output[1] == :Optimal
+    @test isapprox(output[2], -20.0)
 
 end
 
-facts("[Benders] Infeasible problem test") do
+@testset "[Benders] Infeasible problem test" begin
 
     numScen = 1
     m = StructuredModel(num_scenarios=numScen)
@@ -42,11 +42,11 @@ facts("[Benders] Infeasible problem test") do
 
     output = BendersBridge(m, misocp_solver, socp_solver)
 
-    @fact output[1] --> :Infeasible
+    @test output[1] == :Infeasible
 
 end
 
-facts("[Benders] Infeasibility cut execution test #1") do
+@testset "[Benders] Infeasibility cut execution test #1" begin
 
     numScen = 1
     m = StructuredModel(num_scenarios=numScen)
@@ -65,12 +65,12 @@ facts("[Benders] Infeasibility cut execution test #1") do
 
     output = BendersBridge(m, misocp_solver, socp_solver)
 
-    @fact output[1] --> :Optimal
-    @fact output[2] --> roughly(-4.0)
+    @test output[1] == :Optimal
+    @test isapprox(output[2], -4.0)
 
 end
 
-facts("[Benders] Optimality cut execution test #1") do
+@testset "[Benders] Optimality cut execution test #1" begin
 
     numScen = 1
     m = StructuredModel(num_scenarios=numScen)
@@ -89,7 +89,7 @@ facts("[Benders] Optimality cut execution test #1") do
 
     output = BendersBridge(m, misocp_solver, socp_solver)
 
-    @fact output[1] --> :Optimal
-    @fact output[2] --> roughly(-8.0)
+    @test output[1] == :Optimal
+    @test isapprox(output[2], -8.0)
 
 end
