@@ -4,7 +4,6 @@ module StructJuMP
 
 using JuMP # To reexport, should be using (not import)
 import MathProgBase
-import MathProgBase.MathProgSolverInterface
 import ReverseDiffSparse
 
 # These modules could be optional.
