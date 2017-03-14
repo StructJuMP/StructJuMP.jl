@@ -1,12 +1,12 @@
 using JuMP
 using StructJuMP
-using CPLEX
 using ECOS
 using FactCheck
+using Cbc
 
 include("../src/BendersBridge.jl")
 
-misocp_solver = CplexSolver()
+misocp_solver = CbcSolver()
 socp_solver = ECOS.ECOSSolver()
 
 facts("[Benders] Empty scenario test") do
