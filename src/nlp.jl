@@ -1,4 +1,4 @@
-# Add parent::Int here to avoid overwritting same method in JuMP. Should be safe.
+# Add parent::Int here to avoid overwriting same method in JuMP. Should be safe.
 function JuMP.parseNLExpr_runtime(m::JuMP.Model, x::JuMP.Variable, tape, parent::Int, values)
     JuMP.__last_model[1] = x.m
     if x.m === m

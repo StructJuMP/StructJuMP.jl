@@ -31,7 +31,7 @@ function loadAndSolveConicProblem(c, A, b, K, C, solver)
     MathProgBase.loadproblem!(model, c, A, b, K, C)
   
     #println(model) 
-    println("process id $(myid()) started")
+    #println("process id $(myid()) started")
     #@show c, A, b, K, C
  
     # solve conic model
@@ -39,7 +39,7 @@ function loadAndSolveConicProblem(c, A, b, K, C, solver)
     status = MathProgBase.status(model)
 
     # return status and dual
-    println("process id $(myid()) status $(status)")
+    #println("process id $(myid()) status $(status)")
     return status, MathProgBase.getdual(model)
 end
 
@@ -137,7 +137,7 @@ function addCuttingPlanes(master_model, num_scen, A_all, b_all, output, x, θ, s
 end
 
 function Benders_pmap(c_all, A_all, B_all, b_all, K_all, C_all, v, master_solver, sub_solver, TOL=1e-5)
-    println("Benders pmap started")
+    #println("Benders pmap started")
     num_master_var = length(c_all[1])
     num_scen = length(c_all) - 1
 
@@ -146,7 +146,7 @@ function Benders_pmap(c_all, A_all, B_all, b_all, K_all, C_all, v, master_solver
         num_bins[i] = length(b_all[i+1])
     end
 
-    println("Load master problem")
+    #println("Load master problem")
     (master_model, x, θ) = loadMasterProblem(c_all[1], A_all[1], b_all[1], K_all[1], C_all[1], v, num_scen, master_solver)
 
     cut_added = true
@@ -154,7 +154,7 @@ function Benders_pmap(c_all, A_all, B_all, b_all, K_all, C_all, v, master_solver
     objval = Inf
     status = :Infeasible
     while cut_added
-        println("Iteration started")
+        #println("Iteration started")
         status = solve(master_model)
         if status == :Infeasible
             break

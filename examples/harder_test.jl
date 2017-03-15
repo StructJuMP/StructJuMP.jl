@@ -1,7 +1,7 @@
 using StructJuMP
 
 numScens = 2
-m = StructuredModel(numScens)
+m = StructuredModel(num_scenarios=numScens)
 
 @variable(m, x >= 1)
 @variable(m, y <= 2)
@@ -15,10 +15,10 @@ coef = [2,3]
 qc   = [1,0.5]
 ac   = [1,0.75]
 
-@second_stage m scen begin
-    bl = StructuredModel(parent=m)
+for i = 1:numScens
+    bl = StructuredModel(parent=m, id=i)
     @variable(bl, 0 <= w <= 1)
-    @constraint(bl, coef[scen]w - x - y <= rhs[scen])
-    @constraint(bl, coef[scen]w + x     == rhs[scen])
-    @objective(bl, :Min, qc[scen]*w*w + ac[scen]*w)
+    @constraint(bl, coef[i]w - x - y <= rhs[i])
+    @constraint(bl, coef[i]w + x     == rhs[i])
+    @objective(bl, :Min, qc[i]*w*w + ac[i]*w)
 end

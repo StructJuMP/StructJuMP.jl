@@ -9,6 +9,7 @@ include("Benders_pmap.jl")
  StructJuMP/Benders_pmap.jl.
 ===================================================#
 function conicconstraintdata(m::Model)
+    # TODO this generates redundant constraints for variables that are already bounded (one-sided)
     stoch = getStructure(m)
     parent = stoch.parent
     numMasterCols = 0
@@ -246,8 +247,8 @@ function BendersBridge(m::Model, master_solver, sub_solver)
     push!(C_all, var_cones)
     append!(v_all, v)
 
-    for i = 1:length(m.ext[:Stochastic].children)
-        (c,A,B,b,var_cones, constr_cones, v) = conicconstraintdata(m.ext[:Stochastic].children[i])
+    for i = 1:num_scenarios(m)
+        (c,A,B,b,var_cones, constr_cones, v) = conicconstraintdata(getchildren(m)[i])
         push!(c_all, getprobability(m)[i] * c)
         push!(A_all, A)
         push!(B_all, B)
@@ -255,11 +256,78 @@ function BendersBridge(m::Model, master_solver, sub_solver)
         push!(K_all, constr_cones)
         push!(C_all, var_cones)
         append!(v_all, v)
-
     end
 
-    println("Entering Benders")
     return Benders_pmap(c_all,A_all,B_all,b_all,K_all,C_all,v_all,master_solver,sub_solver)
+end
 
+function DLP(m::Model, solver)
+
+    c_all = Vector{Float64}[]
+    A_all = SparseMatrixCSC{Float64}[]
+    B_all = SparseMatrixCSC{Float64}[]
+    b_all = Vector{Float64}[]
+    K_all = Any[]
+    C_all = Any[]
+    v_all = Symbol[]
+
+    (c,A,B,b,var_cones, constr_cones, v) = conicconstraintdata(m)
+    push!(c_all, c)
+    push!(A_all, B)
+    push!(b_all, b)
+    push!(K_all, constr_cones)
+    push!(C_all, var_cones)
+    append!(v_all, v)
+
+    for i = 1:num_scenarios(m)
+        (c,A,B,b,var_cones, constr_cones, v) = conicconstraintdata(getchildren(m)[i])
+        push!(c_all, getprobability(m)[i] * c)
+        push!(A_all, A)
+        push!(B_all, B)
+        push!(b_all, b)
+        push!(K_all, constr_cones)
+        push!(C_all, var_cones)
+        append!(v_all, v)
+    end
+    # v_all is unused for now
+
+    dlp_rows = sum(length(b) for b in b_all)
+    dlp_cols = sum(length(c) for c in c_all)
+
+    c_dlp = zeros(dlp_cols)
+    A_dlp = spzeros(dlp_rows, dlp_cols)
+    b_dlp = zeros(dlp_rows)
+    K_dlp = Any[] # constr_cones
+    C_dlp = Any[] # var_cones
+
+    rows = 1
+    cols = 1
+    for i = 1:length(c_all)
+        rows_end = rows + length(b_all[i]) - 1
+        cols_end = cols + length(c_all[i]) - 1
+
+        c_dlp[cols:cols_end] = c_all[i]
+        b_dlp[rows:rows_end] = b_all[i]
+        
+        A_dlp[rows:rows_end, 1:size(A_all[i], 2)] = A_all[i]
+        if i != 1
+            A_dlp[rows:rows_end, cols:cols_end] = B_all[i-1]
+        end
+        
+        append!(K_dlp, [(cone, rows-1 + idx) for (cone, idx) in K_all[i]])
+        append!(C_dlp, [(cone, cols-1 + idx) for (cone, idx) in C_all[i]])
+        rows = rows_end+1
+        cols = cols_end+1
+    end
+    
+    model = MathProgBase.ConicModel(solver)
+    MathProgBase.loadproblem!(model, c_dlp, A_dlp, b_dlp, K_dlp, C_dlp)
+ 
+    # solve conic model
+    MathProgBase.optimize!(model)
+    status = MathProgBase.status(model)
+
+    # return status, objective value, and solution
+    return status, MathProgBase.getobjval(model), MathProgBase.getsolution(model)[1:length(c_all[1])]
 
 end

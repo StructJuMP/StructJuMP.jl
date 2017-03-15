@@ -1,7 +1,7 @@
 using StructJuMP
 
 numScen = 2
-m = StructuredModel(numScen)
+m = StructuredModel(num_scenarios=numScen)
 
 @variable(m, 0 <= x <= 1)
 @variable(m, 0 <= y <= 1)
@@ -10,7 +10,7 @@ m = StructuredModel(numScen)
 @objective(m, :Min, x*x + y)
 
 for i in 1:numScen
-    bl = StructuredModel(parent=m)
+    bl = StructuredModel(parent=m, id=i)
     @variable(bl, w >= 0)
     @constraint(bl, w - x - y <= 1)
     @objective(bl, :Min, w*w + w)
