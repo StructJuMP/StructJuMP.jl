@@ -271,7 +271,6 @@ function DLP(m::Model, solver)
     C_all = Any[]
     v_all = Symbol[]
 
-    # TODO this generates redundant constraints for variables that are already bounded (one-sided)
     (c,A,B,b,var_cones, constr_cones, v) = conicconstraintdata(m)
     push!(c_all, c)
     push!(A_all, B)
@@ -320,19 +319,9 @@ function DLP(m::Model, solver)
         rows = rows_end+1
         cols = cols_end+1
     end
-    #=
-    println("PROBLEM START")
-    @show size(A_dlp)
-    for r = 1:size(A_dlp, 1)
-        println(b_dlp[r], full(-A_dlp[r, :]), [cone for (cone, idx) in K_dlp if r in idx])
-    end
-    @show C_dlp
-    println("PROBLEM END")
-    =#
+    
     model = MathProgBase.ConicModel(solver)
     MathProgBase.loadproblem!(model, c_dlp, A_dlp, b_dlp, K_dlp, C_dlp)
-  
-    #println(model)
  
     # solve conic model
     MathProgBase.optimize!(model)
