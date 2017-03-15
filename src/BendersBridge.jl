@@ -4,9 +4,8 @@ using StructJuMP
 include("Benders_pmap.jl")
 
 #===================================================
- The following function is taken from JuMP
- src/solvers.jl. Modified for extension 
- StructJuMP/Benders_pmap.jl.
+ The following function is taken from JuMP src/solvers.jl:conicdata(). 
+ Modified for extension StructJuMP/Benders_pmap.jl.
 ===================================================#
 function conicconstraintdata(m::Model)
     # TODO this generates redundant constraints for variables that are already bounded (one-sided)
@@ -47,10 +46,10 @@ function conicconstraintdata(m::Model)
         end
 
         if !seen
-            if lb != -Inf
+            if lb != -Inf && lb != 0
                 numBounds += 1
             end
-            if ub != Inf
+            if ub != Inf && ub != 0
                 numBounds += 1
             end
             if lb == 0 && ub == 0
@@ -143,7 +142,7 @@ function conicconstraintdata(m::Model)
         lb = m.colLower[idx]
         # identify integrality information
         push!(v, m.colCat[idx])
-        if lb != -Inf
+        if lb != -Inf && lb != 0
             bndidx += 1
             nnz += 1
             c   += 1
@@ -154,7 +153,7 @@ function conicconstraintdata(m::Model)
             push!(nonpos_rows, c)
         end
         ub = m.colUpper[idx]
-        if ub != Inf
+        if ub != Inf && ub != 0
             bndidx += 1
             c   += 1
             push!(I_s, c)
