@@ -69,10 +69,4 @@ for s in 1:NS
     @constraint(sb, const_aux, w[3] <= 6000)
 end
 
-print(m)
-
-# FIXME
-#using Clp
-#solver = ClpSolver()
-#include("../src/BendersBridge.jl")
-#BendersBridge(m, solver, solver)
+#print(m)

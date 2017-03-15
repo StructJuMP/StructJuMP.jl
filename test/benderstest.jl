@@ -38,7 +38,7 @@ facts("[Benders] Infeasible problem test") do
     @variable(bl, y2 <= 2)
     @constraint(bl, x >= y1)
     @constraint(bl, norm(y1) <= y2)
-    @objective(bl, Min, 2*y1 + y2)
+    @objective(bl, :Min, 2*y1 + y2)
 
     output = BendersBridge(m, misocp_solver, socp_solver)
 
@@ -61,7 +61,7 @@ facts("[Benders] Infeasibility cut execution test #1") do
     @variable(bl, y2 <= 2)
     @constraint(bl, x <= y1)
     @constraint(bl, norm(y1) <= y2)
-    @objective(bl, Min, 2*y1 + y2)
+    @objective(bl, :Min, 2*y1 + y2)
 
     output = BendersBridge(m, misocp_solver, socp_solver)
 
@@ -85,7 +85,7 @@ facts("[Benders] Optimality cut execution test #1") do
     @variable(bl, y2 <= 4)
     @constraint(bl, x <= y1)
     @constraint(bl, norm(y1) <= y2)
-    @objective(bl, Min, 2*y1 + y2)
+    @objective(bl, :Min, 2*y1 + y2)
 
     output = BendersBridge(m, misocp_solver, socp_solver)
 
