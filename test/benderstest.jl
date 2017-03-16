@@ -7,7 +7,7 @@ using Base.Test
 include("../src/BendersBridge.jl")
 
 misocp_solver = CbcSolver()
-socp_solver = ECOS.ECOSSolver()
+socp_solver = ECOS.ECOSSolver(verbose=false)
 
 @testset "[Benders] Empty scenario test" begin
 

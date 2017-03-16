@@ -40,10 +40,10 @@ for i in factories
 end
 
 for (s, elem) in enumerate(scenarios)
-    bl = StructuredModel(parent=m)
+    bl = StructuredModel(parent=m, id=s)
     @variable(bl, 0 <= salesw[i=centers] <= demand[i,s])
     @variable(bl, wastew[centers] >= 0)
-    @JuMP.setobjective(bl, Max, sum(price*prob[s]*salesw[j] for j=centers) - sum(wastecost*prob[s]*wastew[j] for j=centers))
+    @objective(bl, :Max, sum(price*prob[s]*salesw[j] for j=centers) - sum(wastecost*prob[s]*wastew[j] for j=centers))
     for j in centers
         @constraint(bl, received[j] == salesw[j]+wastew[j])
     end
