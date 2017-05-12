@@ -19,9 +19,7 @@
 
  call with: julia -p <num_threads> <myscript>
 ================================================================#
-@everywhere using JuMP
-
-@everywhere begin
+using JuMP
 
 # this function loads and solves a conic problem and returns its dual
 function loadAndSolveConicProblem(c, A, b, K, C, solver)
@@ -41,8 +39,6 @@ function loadAndSolveConicProblem(c, A, b, K, C, solver)
     # return status and dual
     #println("process id $(myid()) status $(status)")
     return status, MathProgBase.getdual(model)
-end
-
 end
 
 function loadMasterProblem(c, A, b, K, C, v, num_scen, solver)

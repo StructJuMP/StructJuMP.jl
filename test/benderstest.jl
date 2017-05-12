@@ -4,8 +4,6 @@ using ECOS
 using Cbc
 using Base.Test
 
-include("../src/BendersBridge.jl")
-
 misocp_solver = CbcSolver()
 socp_solver = ECOS.ECOSSolver(verbose=false)
 
