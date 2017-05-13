@@ -11,7 +11,8 @@ import ReverseDiffSparse
 # import MPI
 
 export StructuredModel, getStructure, getparent, getchildren, getProcIdxSet,
-       num_scenarios, @second_stage, getprobability, getMyRank
+       num_scenarios, @second_stage, getprobability, getMyRank,
+       BendersBridge, DLP, loadAndSolveConicProblem
 # Macro to exportall
 macro exportall(pkg)
     Expr(:export, names(JuMP)...)
@@ -188,5 +189,7 @@ macro second_stage(m,ind,code)
 end
 
 include("nlp.jl")
+
+include("BendersBridge.jl")
 
 end

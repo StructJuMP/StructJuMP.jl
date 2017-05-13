@@ -2,8 +2,6 @@ using Base.Test
 
 using Clp
 
-include("../src/BendersBridge.jl")
-
 @testset "farmer" begin
     include("../examples/farmer.jl")
     status, objval, soln = DLP(m, ClpSolver())
