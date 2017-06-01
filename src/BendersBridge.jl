@@ -51,13 +51,16 @@ function conicconstraintdata(m::Model)
     V_s = Float64[]
 
     # Fill it up
-    tmprow = JuMP.IndexedVector(Float64,m.numCols)
+    if numMasterCols > 0
+        tmprow_m = JuMP.IndexedVector(Float64, parent.numCols)
+    end
+    tmprow_s = JuMP.IndexedVector(Float64, m.numCols)
 
     JuMP.fillconstrRHS!(b, con_cones, 0, m.linconstr)
     if numMasterCols > 0
-        JuMP.fillconstrLHS!(I_m, J_m, V_m, tmprow, 0, m.linconstr, parent, true)
+        JuMP.fillconstrLHS!(I_m, J_m, V_m, tmprow_m, 0, m.linconstr, parent, true)
     end
-    c = JuMP.fillconstrLHS!(I_s, J_s, V_s, tmprow, 0, m.linconstr, m, true)
+    c = JuMP.fillconstrLHS!(I_s, J_s, V_s, tmprow_s, 0, m.linconstr, m, true)
 
     for idx in 1:m.numCols
         # identify integrality information
@@ -70,16 +73,16 @@ function conicconstraintdata(m::Model)
 
     JuMP.fillconstrRHS!(b, con_cones, c, m.socconstr)
     if numMasterCols > 0
-        JuMP.fillconstrLHS!(I_m, J_m, V_m, tmprow, c, m.socconstr, parent, true)
+        JuMP.fillconstrLHS!(I_m, J_m, V_m, tmprow_m, c, m.socconstr, parent, true)
     end
-    c = JuMP.fillconstrLHS!(I_s, J_s, V_s, tmprow, c, m.socconstr, m, true)
+    c = JuMP.fillconstrLHS!(I_s, J_s, V_s, tmprow_s, c, m.socconstr, m, true)
 
     @assert c == numLinRows + numBounds + numSOCRows
 
     if numMasterCols > 0
-        c, d = JuMP.fillconstr!(I_m, J_m, V_m, b, con_cones, tmprow, constr_to_row, c, d, m.sdpconstr, m, true)
+        c, d = JuMP.fillconstr!(I_m, J_m, V_m, b, con_cones, tmprow_m, constr_to_row, c, d, m.sdpconstr, m, true)
     end
-    c, d = JuMP.fillconstr!(I_s, J_s, V_s, b, con_cones, tmprow, constr_to_row, c, d, m.sdpconstr, m, true)
+    c, d = JuMP.fillconstr!(I_s, J_s, V_s, b, con_cones, tmprow_s, constr_to_row, c, d, m.sdpconstr, m, true)
 
     if c < length(b)
         # This happens for example when symmetry constraints are dropped with SDP
