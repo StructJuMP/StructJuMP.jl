@@ -5,7 +5,7 @@ The StructJuMP package provides a parallel algebraic modeling framework for bloc
 
 ## Installation
 ```julia
-Pkg.clone("https://github.com/StructJuMP/StructJuMP.jl.git")
+Pkg.add("StructJuMP")
 ```
 
 ## An example
