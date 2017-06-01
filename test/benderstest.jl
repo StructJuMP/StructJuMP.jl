@@ -7,6 +7,29 @@ using Base.Test
 misocp_solver = CbcSolver()
 socp_solver = ECOS.ECOSSolver(verbose=false)
 
+@testset "[Benders] conicconstraintdata with more variables in parent" begin
+    m = StructuredModel(num_scenarios=1)
+    @variable(m, x[1:2])
+    @objective(m, :Min, sum(x))
+
+    bl = StructuredModel(parent=m, id=1)
+    @variable(bl, y)
+    @constraint(bl, 4y + 5x[1] + 6x[2] >= 2)
+    @objective(bl, :Max, 3y)
+
+    c, A, B, b, var_cones, con_cones, v = StructJuMP.conicconstraintdata(bl)
+    @test c == [-3]
+    @test A == [5 6]
+    @test B == reshape([4], 1, 1)
+    @test b == [2]
+    @test length(var_cones) == 1
+    @test var_cones[1][1] == :Free
+    @test collect(var_cones[1][2]) == [1]
+    @test con_cones[1][1] == :NonPos
+    @test collect(con_cones[1][2]) == [1]
+    @test v == [:Cont]
+end
+
 @testset "[Benders] Empty scenario test" begin
 
     m = StructuredModel(num_scenarios=0)
