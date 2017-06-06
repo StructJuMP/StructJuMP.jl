@@ -41,7 +41,7 @@ function conicconstraintdata(m::Model)
     # constr_to_row is not used but fill_bounds_constr! and fillconstr! for SDP needs them
     constr_to_row = Array{Vector{Int}}(numBounds + 2*length(m.sdpconstr))
 
-    b = Array(Float64, numRows)
+    b = Array{Float64}(numRows)
 
     I_m = Int[]
     J_m = Int[]
