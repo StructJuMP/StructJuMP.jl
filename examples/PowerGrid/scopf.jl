@@ -96,7 +96,7 @@ function scopf_model(scopf_data)
     for b in 1:nbus
       #real part
       @NLconstraint( opfmodel, 
-        ( sum( YffR[l] for l in FromLines[b]) + sum( YttR[l] for l in ToLines[b]} + YshR[b] ) * Vm[b,co]^2 
+        ( sum( YffR[l] for l in FromLines[b]) + sum( YttR[l] for l in ToLines[b]) + YshR[b] ) * Vm[b,co]^2 
         + sum(  Vm[b,co]*Vm[busIdx[lines[l].to],  co]*( YftR[l]*cos(Va[b,co]-Va[busIdx[lines[l].to],  co]) 
               + YftI[l]*sin(Va[b,co]-Va[busIdx[lines[l].to],co]  )) for l in FromLines[b] )  
         + sum(  Vm[b,co]*Vm[busIdx[lines[l].from],co]*( YtfR[l]*cos(Va[b,co]-Va[busIdx[lines[l].from],co]) 
