@@ -18,7 +18,7 @@ end
 
 function scopf_model(raw::RawData)
   opfdata = opf_loaddata(raw) #load root node
-  lines_off=Array(Line, length(ARGS)-1)
+  lines_off=Array{Line}(length(ARGS)-1)
   for l in 1:length(lines_off)
     lines_off[l] = opfdata.lines[parse(Int,ARGS[l+1])]
   end
@@ -227,10 +227,10 @@ function scopf_structjump_outputAll(opfmodel, scopf_data)
 
   # OUTPUTING
   println("Objective value: ", getObjectiveVal(opfmodel), "USD/hr")
-  VM=getvalue(getvariable(opfmodel,:Vm)); VA=getvalue(getvariable(opfmodel,:Va))
-  PG=getvalue(getvariable(opfmodel,:Pg)); QG=getvalue(getvariable(opfmodel,:Qg))
+  VM=getvalue(getindex(opfmodel,:Vm)); VA=getvalue(getindex(opfmodel,:Va))
+  PG=getvalue(getindex(opfmodel,:Pg)); QG=getvalue(getindex(opfmodel,:Qg))
 
-  EX=getvalue(getvariable(opfmodel,:extra));
+  EX=getvalue(getindex(opfmodel,:extra));
 
   # printing the first stage variables
   println("============================= BUSES ==================================")
@@ -313,19 +313,19 @@ function scopf_init_x(scopfmodel,scopfdata)
       opfdata = opf_loaddata(raw)
       Pg0,Qg0,Vm0,Va0 = scopf_compute_x0(opfdata)
       extra0 = 0.025*Pg0
-      setvalue(getvariable(scopfmodel, :Pg), Pg0)
-      setvalue(getvariable(scopfmodel, :extra), extra0)  
-      setvalue(getvariable(scopfmodel, :Qg), Qg0)
-      setvalue(getvariable(scopfmodel, :Vm), Vm0)
-      setvalue(getvariable(scopfmodel, :Va), Va0)
+      setvalue(getindex(scopfmodel, :Pg), Pg0)
+      setvalue(getindex(scopfmodel, :extra), extra0)  
+      setvalue(getindex(scopfmodel, :Qg), Qg0)
+      setvalue(getindex(scopfmodel, :Vm), Vm0)
+      setvalue(getindex(scopfmodel, :Va), Va0)
     else
       mm = getchildren(scopfmodel)[i]
       opfdata_c=opf_loaddata(raw,lines_off[i]) 
       Pg0,Qg0,Vm0,Va0 = scopf_compute_x0(opfdata_c)
       extra0 = 0.025*Pg0
-      setvalue(getvariable(mm, :extra), extra0)
-      setvalue(getvariable(mm, :Vm), Vm0)
-      setvalue(getvariable(mm, :Va), Va0)
+      setvalue(getindex(mm, :extra), extra0)
+      setvalue(getindex(mm, :Vm), Vm0)
+      setvalue(getindex(mm, :Va), Va0)
     end
   end
 end

@@ -13,11 +13,11 @@ function scopf_solve(opfmodel, scopf_data)
   # Initial point - needed especially for pegase cases
   #
   Pg0,Qg0,Vm0,Va0 = acopf_initialPt_IPOPT(scopf_data.opfdata)
-  setvalue(getvariable(opfmodel, :Pg), Pg0)  
-  setvalue(getvariable(opfmodel, :Qg), Qg0)
-  extra_jump=getvariable(opfmodel, :extra)
-  Vm_jump=getvariable(opfmodel, :Vm)
-  Va_jump=getvariable(opfmodel, :Va)
+  setvalue(getindex(opfmodel, :Pg), Pg0)  
+  setvalue(getindex(opfmodel, :Qg), Qg0)
+  extra_jump=getindex(opfmodel, :extra)
+  Vm_jump=getindex(opfmodel, :Vm)
+  Va_jump=getindex(opfmodel, :Va)
 
   setvalue(Vm_jump[:,0], Vm0)    
   setvalue(Va_jump[:,0], Va0)    
@@ -76,6 +76,7 @@ function scopf_model(scopf_data)
     setupperbound(Va[sd.opfdata.bus_ref,c], buses[sd.opfdata.bus_ref].Va)
   end
 
+  @constraint(opfmodel, ex[i=1:ngen,co=0:ncont], generators[i].Pmin <= Pg[i] + extra[i,co] <= generators[i].Pmax)
   for co=0:ncont
     #branch admitances
     if co==0
@@ -90,13 +91,12 @@ function scopf_model(scopf_data)
     end
     nline=length(lines)
 
-   @constraint(opfmodel, ex[i=1:ngen], generators[i].Pmin <= Pg[i] + extra[i,co] <= generators[i].Pmax)
 
     # power flow balance
     for b in 1:nbus
       #real part
       @NLconstraint( opfmodel, 
-        ( sum( YffR[l] for l in FromLines[b]) + sum( YttR[l] for l in ToLines[b]} + YshR[b] ) * Vm[b,co]^2 
+        ( sum( YffR[l] for l in FromLines[b]) + sum( YttR[l] for l in ToLines[b]) + YshR[b] ) * Vm[b,co]^2 
         + sum(  Vm[b,co]*Vm[busIdx[lines[l].to],  co]*( YftR[l]*cos(Va[b,co]-Va[busIdx[lines[l].to],  co]) 
               + YftI[l]*sin(Va[b,co]-Va[busIdx[lines[l].to],co]  )) for l in FromLines[b] )  
         + sum(  Vm[b,co]*Vm[busIdx[lines[l].from],co]*( YtfR[l]*cos(Va[b,co]-Va[busIdx[lines[l].from],co]) 
@@ -198,12 +198,12 @@ function scopf_outputAll(opfmodel, scopf_data)
 
   # OUTPUTING
   println("Objective value: ", getobjectivevalue(opfmodel), "USD/hr")
-  VM=getvalue(getvariable(opfmodel,:Vm)); VA=getvalue(getvariable(opfmodel,:Va));
-  PG=getvalue(getvariable(opfmodel,:Pg)); QG=getvalue(getvariable(opfmodel,:Qg));
+  VM=getvalue(getindex(opfmodel,:Vm)); VA=getvalue(getindex(opfmodel,:Va));
+  PG=getvalue(getindex(opfmodel,:Pg)); QG=getvalue(getindex(opfmodel,:Qg));
 
   VM=VM[:,0]; VA=VA[:,0]; #base case
 
-  EX=getvalue(getvariable(opfmodel,:extra));
+  EX=getvalue(getindex(opfmodel,:extra));
   EX=EX[:,0];
 
   # printing the first stage variables

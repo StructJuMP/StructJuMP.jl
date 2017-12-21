@@ -8,10 +8,10 @@ function acopf_solve(opfmodel, opf_data)
   # Initial point - needed especially for pegase cases
   #
   Pg0,Qg0,Vm0,Va0 = acopf_initialPt_IPOPT(opf_data)
-  setvalue(getvariable(opfmodel, :Pg), Pg0)  
-  setvalue(getvariable(opfmodel, :Qg), Qg0)
-  setvalue(getvariable(opfmodel, :Vm), Vm0)
-  setvalue(getvariable(opfmodel, :Va), Va0)
+  setvalue(getindex(opfmodel, :Pg), Pg0)  
+  setvalue(getindex(opfmodel, :Qg), Qg0)
+  setvalue(getindex(opfmodel, :Vm), Vm0)
+  setvalue(getindex(opfmodel, :Va), Va0)
 
   status = solve(opfmodel)
 
@@ -154,8 +154,8 @@ function acopf_outputAll(opfmodel, opf_data)
 
   # OUTPUTING
   println("Objective value: ", getobjectivevalue(opfmodel), "USD/hr")
-  VM=getvalue(getvariable(opfmodel,:Vm)); VA=getvalue(getvariable(opfmodel,:Va))
-  PG=getvalue(getvariable(opfmodel,:Pg)); QG=getvalue(getvariable(opfmodel,:Qg))
+  VM=getvalue(getindex(opfmodel,:Vm)); VA=getvalue(getindex(opfmodel,:Va))
+  PG=getvalue(getindex(opfmodel,:Pg)); QG=getvalue(getindex(opfmodel,:Qg))
 
   println("============================= BUSES ==================================")
   println("  BUS    Vm     Va   |   Pg (MW)    Qg(MVAr) ")   # |    P (MW)     Q (MVAr)")  #|         (load)   ") 

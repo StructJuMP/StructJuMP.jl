@@ -1,4 +1,4 @@
-__precompile__()
+#__precompile__()
 
 module StructJuMP
 
@@ -7,8 +7,8 @@ import MathProgBase
 import ReverseDiffSparse
 
 # These modules could be optional.
-# import StructJuMPSolverInterface
-# import MPI
+import StructJuMPSolverInterface
+import MPI
 
 export StructuredModel, getStructure, getparent, getchildren, getProcIdxSet,
        num_scenarios, @second_stage, getprobability, getMyRank,
