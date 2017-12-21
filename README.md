@@ -36,8 +36,8 @@ Problems modeled in StructJuMP models can be solved in parallel using the [PIPS-
 ### Mixed-Integer Solvers
 [DSP](https://github.com/Argonne-National-Laboratory/DSP.git) can read models from StructJuMP via [DSPsolver.jl](https://github.com/Argonne-National-Laboratory/DSPsolver.jl.git). In particular, ``DSP`` can solver problems with integer variables in parallel.
 
-### Stochastic Dual Dynamic Programming
-[Stochastic Dual Dynamic Programming](https://github.com/blegat/StochasticDualDynamicProgramming.jl) can read multi-stage models from StructJuMP.
+### Stochastic Dual Dynamic Programming (SDDP)
+[StructDualDynProg](https://github.com/blegat/StructDualDynProg.jl) can run the SDDP algorithm on multi-stage models from StructJuMP.
 
 ## Acknowledgements
 StructJuMP has been developed under the financial support of Department of Energy (DOE), Office of Advanced Scientific Computing Research, Office of Electricity Delivery and Energy Reliability, and Grid Modernization Laboratory Consortium (GMLC) (PIs: Cosmin G. Petra, Lawrence Livermore National Laboratory and Mihai Anitescu, Argonne National Laboratory).
