@@ -91,7 +91,7 @@ function opf_loaddata(raw::RawData, lineOff=Line())
   #
   bus_arr = raw.bus_arr
   num_buses = size(bus_arr,1)
-  buses = Array(Bus, num_buses)
+  buses = Array{Bus}(num_buses)
   bus_ref=-1
   for i in 1:num_buses
     @assert bus_arr[i,1]>0  #don't support nonpositive bus ids
@@ -112,7 +112,7 @@ function opf_loaddata(raw::RawData, lineOff=Line())
   #
   branch_arr = raw.branch_arr
   num_lines = size(branch_arr,1)
-  lines_on = find((branch_arr[:,11].>0) & ((branch_arr[:,1].!=lineOff.from) | (branch_arr[:,2].!=lineOff.to)) )
+  lines_on = find((branch_arr[:,11].>0) .& ((branch_arr[:,1].!=lineOff.from) .| (branch_arr[:,2].!=lineOff.to)) )
   num_on   = length(lines_on)
 
   if lineOff.from>0 && lineOff.to>0 
@@ -125,7 +125,7 @@ function opf_loaddata(raw::RawData, lineOff=Line())
 
 
 
-  lines = Array(Line, num_on)
+  lines = Array{Line}(num_on)
 
   lit=0
   for i in lines_on
@@ -155,11 +155,11 @@ function opf_loaddata(raw::RawData, lineOff=Line())
     println("loaddata: ", num_gens-num_on, " generators are off and will be discarded (out of ", num_gens, ")")
   end
 
-  generators = Array(Gener, num_on)
+  generators = Array{Gener}(num_on)
   i=0
   for git in gens_on
     i += 1
-    generators[i] = Gener(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, Array(Int,0)) #gen_arr[i,1:end]...)
+    generators[i] = Gener(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, Array{Int}(0)) #gen_arr[i,1:end]...)
 
     generators[i].bus      = gen_arr[git,1]
     generators[i].Pg       = gen_arr[git,2] / baseMVA
@@ -211,14 +211,14 @@ end
 
 function  computeAdmitances(lines, buses, baseMVA)
   nlines = length(lines)
-  YffR=Array(Float64,nlines)
-  YffI=Array(Float64,nlines)
-  YttR=Array(Float64,nlines) 
-  YttI=Array(Float64,nlines)
-  YftR=Array(Float64,nlines)
-  YftI=Array(Float64,nlines)
-  YtfR=Array(Float64,nlines)
-  YtfI=Array(Float64,nlines)
+  YffR=Array{Float64}(nlines)
+  YffI=Array{Float64}(nlines)
+  YttR=Array{Float64}(nlines) 
+  YttI=Array{Float64}(nlines)
+  YftR=Array{Float64}(nlines)
+  YftI=Array{Float64}(nlines)
+  YtfR=Array{Float64}(nlines)
+  YtfI=Array{Float64}(nlines)
 
   for i in 1:nlines
     @assert lines[i].status == 1 
@@ -243,24 +243,24 @@ function  computeAdmitances(lines, buses, baseMVA)
   end
 
   nbuses = length(buses)
-  YshR = Array(Float64,nbuses)
-  YshI = Array(Float64,nbuses)
+  YshR = Array{Float64}(nbuses)
+  YshI = Array{Float64}(nbuses)
   for i in 1:nbuses
     YshR[i] = buses[i].Gs / baseMVA
     YshI[i] = buses[i].Bs / baseMVA
     #@printf("[%4d]   Ysh  %15.12f + %15.12f i \n", i, YshR[i], YshI[i])
   end
 
-  @assert 0==length(find(isnan(YffR)))+length(find(isinf(YffR)))
-  @assert 0==length(find(isnan(YffI)))+length(find(isinf(YffI)))
-  @assert 0==length(find(isnan(YttR)))+length(find(isinf(YttR)))
-  @assert 0==length(find(isnan(YttI)))+length(find(isinf(YttI)))
-  @assert 0==length(find(isnan(YftR)))+length(find(isinf(YftR)))
-  @assert 0==length(find(isnan(YftI)))+length(find(isinf(YftI)))
-  @assert 0==length(find(isnan(YtfR)))+length(find(isinf(YtfR)))
-  @assert 0==length(find(isnan(YtfI)))+length(find(isinf(YtfI)))
-  @assert 0==length(find(isnan(YshR)))+length(find(isinf(YshR)))
-  @assert 0==length(find(isnan(YshI)))+length(find(isinf(YshI)))
+  @assert 0==length(find(isnan.(YffR)))+length(find(isinf.(YffR)))
+  @assert 0==length(find(isnan.(YffI)))+length(find(isinf.(YffI)))
+  @assert 0==length(find(isnan.(YttR)))+length(find(isinf.(YttR)))
+  @assert 0==length(find(isnan.(YttI)))+length(find(isinf.(YttI)))
+  @assert 0==length(find(isnan.(YftR)))+length(find(isinf.(YftR)))
+  @assert 0==length(find(isnan.(YftI)))+length(find(isinf.(YftI)))
+  @assert 0==length(find(isnan.(YtfR)))+length(find(isinf.(YtfR)))
+  @assert 0==length(find(isnan.(YtfI)))+length(find(isinf.(YtfI)))
+  @assert 0==length(find(isnan.(YshR)))+length(find(isinf.(YshR)))
+  @assert 0==length(find(isnan.(YshI)))+length(find(isinf.(YshI)))
 
   return YffR, YffI, YttR, YttI, YftR, YftI, YtfR, YtfI, YshR, YshI
 end

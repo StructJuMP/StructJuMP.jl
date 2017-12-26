@@ -1,4 +1,4 @@
-__precompile__()
+__precompile__()   # need to be commented for examples/PowerGrid to be run properly
 
 module StructJuMP
 
@@ -7,8 +7,8 @@ import MathProgBase
 import ReverseDiffSparse
 
 # These modules could be optional.
-# import StructJuMPSolverInterface
-# import MPI
+# import StructJuMPSolverInterface ## need to be uncommented for exmples/PowerGrid to be run properly
+# import MPI                       ## need to be uncommented for examples/PowerGrid to be run properly
 
 export StructuredModel, getStructure, getparent, getchildren, getProcIdxSet,
        num_scenarios, @second_stage, getprobability, getMyRank,
