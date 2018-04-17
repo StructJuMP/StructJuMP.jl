@@ -7,7 +7,7 @@ import MathProgBase
 import ReverseDiffSparse
 
 # These modules could be optional.
-# import StructJuMPSolverInterface ## need to be uncommented for exmples/PowerGrid to be run properly
+# import StructJuMPSolverInterface ## need to be uncommented for examples/PowerGrid to be run properly
 # import MPI                       ## need to be uncommented for examples/PowerGrid to be run properly
 
 export StructuredModel, getStructure, getparent, getchildren, getProcIdxSet,
