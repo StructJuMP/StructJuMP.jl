@@ -61,7 +61,7 @@ const dummy_mpi_wrapper = DummyMPIWrapper()
 
 # Constructor with the number of scenarios
 function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, same_children_as=nothing, id=0, comm=nothing, num_scenarios::Int=0, prob::Float64=default_probability(parent), mpi_wrapper=dummy_mpi_wrapper)
-    _comm = (comm == nothing ? mpi_wrapper : comm)
+    _comm = (comm == nothing ? mpi_wrapper.comm : comm)
     m = JuMP.Model(solver=solver)
     if parent === nothing
         id = 0
