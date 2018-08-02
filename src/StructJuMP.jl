@@ -31,8 +31,8 @@ mutable struct StructuredModel <: JuMP.AbstractModel
     nextconidx::Int                                 # Next constraint index is nextconidx+1
     constraints::Dict{Int, JuMP.AbstractConstraint} # Map conidx -> variable
     connames::Dict{Int, String}                     # Map varidx -> name
-    objectivesense::Symbol
-    objectivefunction::JuMP.AbstractJuMPScalar
+    objective_sense::Symbol
+    objective_function::JuMP.AbstractJuMPScalar
     objdict::Dict{Symbol, Any}                      # Same that JuMP.Model's field `objdict`
     function StructuredModel(; parent=nothing, same_children_as=nothing, id=0,
                              num_scenarios::Int=0,
@@ -69,9 +69,9 @@ end
 #### Structured ####
 
 getparent(model::StructuredModel)      = model.parent
-getchildren(model::StructuredModel)    = model.children::Dict{Int,JuMP.Model}
-getprobability(model::StructuredModel) = model.probability::Dict{Int, Float64}
-num_scenarios(model::StructuredModel)  = model.num_scen::Int
+getchildren(model::StructuredModel)    = model.children
+getprobability(model::StructuredModel) = model.probability
+num_scenarios(model::StructuredModel)  = model.num_scen
 
 default_probability(model::StructuredModel) = 1 / num_scenarios(model)
 default_probability(::Compat.Nothing) = 1.0
@@ -177,14 +177,13 @@ end
 
 # Objective
 function JuMP.setobjective(m::StructuredModel, sense::Symbol, f::JuMP.AbstractJuMPScalar)
-    m.objectivesense = sense
-    m.objectivefunction = f
+    m.objective_sense = sense
+    m.objective_function = f
 end
-JuMP.objectivesense(m::StructuredModel) = m.objectivesense
+JuMP.objectivesense(m::StructuredModel) = m.objective_sense
 function JuMP.objectivefunction(m::StructuredModel, FT::Type)
-    # ErrorException should be thrown, this is needed in `objective.jl`
-    m.objectivefunction isa FT || error("The objective function is not of type $FT")
-    m.objectivefunction
+    m.objective_function isa FT || error("The objective function is not of type $FT")
+    m.objective_function
 end
 
 # Names
@@ -196,5 +195,7 @@ JuMP.name(cref::StructuredConstraintRef) = cref.model.connames[cref.idx]
 function JuMP.setname(cref::StructuredConstraintRef, name::String)
     cref.model.connames[cref.idx] = name
 end
+
+include("BendersBridge.jl")
 
 end
