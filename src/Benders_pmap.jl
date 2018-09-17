@@ -10,35 +10,35 @@ struct Solution
 end
 
 function optimize(model::ParametrizedModel)
-    JuMP.optimize(model.model)
-    feasible = MOI.canget(model.model.moibackend, MOI.PrimalStatus()) && JuMP.primalstatus(model.model) == MOI.FeasiblePoint
+    JuMP.optimize!(model.model)
+    feasible = JuMP.primal_status(model.model) == MOI.FeasiblePoint
     if feasible
-        @assert JuMP.terminationstatus(model.model) == MOI.Success
-        objective_value = JuMP.objectivevalue(model.model)
+        @assert JuMP.termination_status(model.model) == MOI.Success
+        objective_value = JuMP.objective_value(model.model)
     else
         if isempty(model.parameter_map)
             # This is the master model so we don't need to generate infeasibility ray
             # hence the status can be `MOI.InfeasibleNoResult`. This happens for instance
             # if the problem is a MIP.
-            @assert JuMP.terminationstatus(model.model) in (MOI.Success, MOI.InfeasibleNoResult)
+            @assert JuMP.termination_status(model.model) in (MOI.Success, MOI.InfeasibleNoResult)
         else
-            @assert JuMP.terminationstatus(model.model) == MOI.Success
-            @assert JuMP.dualstatus(model.model) == MOI.InfeasibilityCertificate
+            @assert JuMP.termination_status(model.model) == MOI.Success
+            @assert JuMP.dual_status(model.model) == MOI.InfeasibilityCertificate
         end
-        objective_value = JuMP.objectivebound(model.model)
+        objective_value = JuMP.objective_bound(model.model)
     end
     variable_value = Dict{JuMP.VariableRef, Float64}()
     if feasible
         for vref in values(model.variable_map)
-            variable_value[vref] = JuMP.resultvalue(vref)
+            variable_value[vref] = JuMP.result_value(vref)
         end
         for θ in values(model.θ)
-            variable_value[θ] = JuMP.resultvalue(θ)
+            variable_value[θ] = JuMP.result_value(θ)
         end
     end
     parameter_dual = Dict{Parameter, Float64}()
     for parameter in values(model.parameter_map)
-        parameter_dual[parameter] = JuMP.resultdual(parameter)
+        parameter_dual[parameter] = JuMP.result_dual(parameter)
     end
     Solution(feasible, objective_value, variable_value, parameter_dual)
 end
@@ -80,7 +80,7 @@ function add_cutting_planes(master_model, master_solution, sub_models, sub_solut
                 scaling = maximum(term -> term[1], aff.terms)
             end
             scaled_aff = typeof(aff)(sign(aff.constant))
-            for (coef, var) in JuMP.linearterms(aff)
+            for (coef, var) in JuMP.linear_terms(aff)
                 JuMP.add_to_expression!(scaled_aff, coef / scaling, var)
             end
             aff = scaled_aff

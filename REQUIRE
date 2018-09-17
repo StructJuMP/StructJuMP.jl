@@ -1,5 +1,5 @@
 julia 0.6
-MathOptInterface 0.4.1
+MathOptInterface 0.6
 JuMP 0.19-
 ParameterJuMP
 Compat 0.70

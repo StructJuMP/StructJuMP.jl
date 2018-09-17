@@ -90,7 +90,7 @@ function ParametrizedModel(structured_model::StructuredModel, args...; kwargs...
     variable_map = Dict{Int, JuMP.VariableRef}()
     for (index, var) in structured_model.variables
         name = structured_model.varnames[index]
-        variable_map[index] = JuMP.addvariable(model, var, name)
+        variable_map[index] = JuMP.add_variable(model, var, name)
     end
     parameter_map = Dict{Int, ParameterJuMP.Parameter}()
     for (index, con) in structured_model.constraints
