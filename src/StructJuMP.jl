@@ -85,16 +85,19 @@ struct StructuredVariableRef <: JuMP.AbstractVariableRef
     model::StructuredModel # `model` owning the variable
     idx::Int       # Index in `model.variables`
 end
+if VERSION >= v"0.7-"
+    Base.broadcastable(v::StructuredVariableRef) = Ref(v)
+end
 Base.copy(v::StructuredVariableRef) = v
 Base.:(==)(v::StructuredVariableRef, w::StructuredVariableRef) = v.model === w.model && v.idx == w.idx
 JuMP.owner_model(v::StructuredVariableRef) = v.model
 JuMP.isequal_canonical(v::StructuredVariableRef, w::StructuredVariableRef) = v == w
-JuMP.variabletype(::StructuredModel) = StructuredVariableRef
+JuMP.variable_type(::StructuredModel) = StructuredVariableRef
 function JuMP.add_variable(m::StructuredModel, v::JuMP.AbstractVariable, name::String="")
     m.nextvaridx += 1
     vref = StructuredVariableRef(m, m.nextvaridx)
     m.variables[vref.idx] = v
-    JuMP.setname(vref, name)
+    JuMP.set_name(vref, name)
     vref
 end
 function MOI.delete!(m::StructuredModel, vref::StructuredVariableRef)
@@ -158,7 +161,7 @@ function JuMP.add_constraint(m::StructuredModel, c::JuMP.AbstractConstraint, nam
     m.nextconidx += 1
     cref = StructuredConstraintRef(m, m.nextconidx)
     m.constraints[cref.idx] = c
-    JuMP.setname(cref, name)
+    JuMP.set_name(cref, name)
     cref
 end
 function MOI.delete!(m::StructuredModel, cref::StructuredConstraintRef)

@@ -27,7 +27,7 @@ function parametrized_function(aff::JuMP.GenericAffExpr{C, StructuredVariableRef
                                parameter_map::Dict{Int, ParameterJuMP.Parameter}) where C
     param_aff = ParameterJuMP.PAE{C}(JuMP.GenericAffExpr{C, JuMP.VariableRef}(aff.constant),
                                      JuMP.GenericAffExpr{C, ParameterJuMP.Parameter}(zero(C)))
-    for (coef, var) in JuMP.linearterms(aff)
+    for (coef, var) in JuMP.linear_terms(aff)
         JuMP.add_to_expression!(param_aff,
                                 coef,
                                 parametrized_function(var, structured_model, model, variable_map, parameter_map))
@@ -97,8 +97,8 @@ function ParametrizedModel(structured_model::StructuredModel, args...; kwargs...
         name = structured_model.connames[index]
         param_fun = parametrized_function(con.func, structured_model, model,
                                           variable_map, parameter_map)
-        param_con = JuMP.buildconstraint(error, param_fun, con.set)
-        JuMP.addconstraint(model, param_con, name)
+        param_con = JuMP.build_constraint(error, param_fun, con.set)
+        JuMP.add_constraint(model, param_con, name)
     end
     objective_function = parametrized_function(structured_model.objective_function,
                                                structured_model, model,
@@ -108,11 +108,11 @@ function ParametrizedModel(structured_model::StructuredModel, args...; kwargs...
     end
     θ = Dict{Int, VariableRef}()
     for (id, proba) in getprobability(structured_model)
-        θid = @variable(model, lowerbound = 0.0)
+        θid = @variable(model, lower_bound = 0.0)
         θ[id] = θid
         JuMP.add_to_expression!(objective_function, proba, θid)
     end
-    JuMP.setobjective(model, structured_model.objective_sense, objective_function)
+    JuMP.set_objective(model, structured_model.objective_sense, objective_function)
     ParametrizedModel(structured_model, model, variable_map, parameter_map, θ)
 end
 
@@ -120,12 +120,14 @@ include("Benders_pmap.jl")
 
 # The optimizers are function returning an empty optimizer,
 # this will be replaced by factories once this is implemented in JuMP
-function BendersBridge(structured_model::StructuredModel, master_optimizer::Function, sub_optimizer::Function)
-    master_model = ParametrizedModel(structured_model, optimizer=master_optimizer())
+function BendersBridge(structured_model::StructuredModel,
+                       master_optimizer::JuMP.OptimizerFactory,
+                       sub_optimizer::JuMP.OptimizerFactory)
+    master_model = ParametrizedModel(structured_model, master_optimizer)
     children = getchildren(structured_model)
     sub_models = Dict{Int, ParametrizedModel}()
     for (id, child) in getchildren(structured_model)
-        sub_models[id] = ParametrizedModel(child, optimizer=sub_optimizer())
+        sub_models[id] = ParametrizedModel(child, sub_optimizer)
     end
     return Benders_pmap(master_model, sub_models)
 end

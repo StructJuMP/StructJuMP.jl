@@ -6,8 +6,8 @@ using Compat
 using Compat.Test
 
 #misocp_solver = CbcSolver()
-misocp_solver = () -> GLPK.GLPKOptimizerMIP()
-socp_solver = () -> ECOS.ECOSOptimizer(verbose=false)
+misocp_solver = with_optimizer(GLPK.Optimizer)
+socp_solver = with_optimizer(ECOS.Optimizer, verbose=false)
 
 #@testset "[Benders] conicconstraintdata with more variables in parent" begin
 #    m = StructuredModel(num_scenarios=1)
