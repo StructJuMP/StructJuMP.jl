@@ -67,7 +67,6 @@ function add_cutting_planes(master_model, master_solution, sub_models, sub_solut
             # Check if the cut is useful
             JuMP.add_to_expression!(aff, -1.0, master_model.θ[id])
             if JuMP.value(aff, vref -> master_solution.variable_value[vref]) - TOL < 0
-                println("No cut !")
                 continue
             end
         else
