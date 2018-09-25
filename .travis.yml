@@ -18,4 +18,4 @@ addons:
 before_script:
     - julia -e 'if VERSION >= v"0.7-"; using Pkg; Pkg.add(PackageSpec(name="JuMP", rev="master")); Pkg.add(PackageSpec(url="https://github.com/JuliaStochOpt/ParameterJuMP.jl.git")); else Pkg.add("JuMP"); Pkg.checkout("JuMP"); Pkg.clone("https://github.com/JuliaStochOpt/ParameterJuMP.jl.git"); end'
 after_success:
-  - julia -e 'cd(Pkg.dir("StructJuMP")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
+    - julia -e 'cd(Pkg.dir("StructJuMP")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
