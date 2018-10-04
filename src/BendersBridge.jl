@@ -1,5 +1,7 @@
 using JuMP
 using StructJuMP
+using Compat.SparseArrays
+using Compat.LinearAlgebra
 
 include("Benders_pmap.jl")
 
@@ -39,9 +41,9 @@ function conicconstraintdata(m::Model)
     numRows = numLinRows + numBounds + numSOCRows + numSDPRows + numSymRows
 
     # constr_to_row is not used but fill_bounds_constr! and fillconstr! for SDP needs them
-    constr_to_row = Array{Vector{Int}}(numBounds + 2*length(m.sdpconstr))
+    constr_to_row = Vector{Vector{Int}}(undef, numBounds + 2*length(m.sdpconstr))
 
-    b = Array{Float64}(numRows)
+    b = Vector{Float64}(undef, numRows)
 
     I_m = Int[]
     J_m = Int[]
@@ -93,7 +95,7 @@ function conicconstraintdata(m::Model)
 
     # The conic MPB interface defines conic problems as
     # always being minimization problems, so flip if needed
-    m.objSense == :Max && scale!(f_s, -1.0)
+    m.objSense == :Max && rmul!(f_s, -1.0)
 
     if numMasterCols > 0
         JuMP.rescaleSDcols!(spzeros(numMasterCols), J_m, V_m, parent)

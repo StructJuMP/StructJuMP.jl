@@ -1,6 +1,8 @@
-__precompile__()   # need to be commented for examples/PowerGrid to be run properly
+VERSION < v"0.7.0-beta2.199" && __precompile__()   # need to be commented for examples/PowerGrid to be run properly
 
 module StructJuMP
+
+using Compat
 
 using JuMP # To reexport, should be using (not import)
 import MathProgBase
@@ -23,56 +25,56 @@ end
 # ---------------
 # StructureData
 # ---------------
-type StructureData
-    probability::Dict{Int,Float64}
-    children::Dict{Int,JuMP.Model}
+mutable struct StructureData
+    probability::Dict{Int, Float64}
+    children::Dict{Int, JuMP.Model}
     parent
     num_scen::Int
-    othermap::Dict{JuMP.Variable,JuMP.Variable}
+    othermap::Dict{JuMP.Variable, JuMP.Variable}
     MPIWrapper # Empty unless StructJuMPwithMPI fills it
 end
-default_probability(m::JuMP.Model) = 1 / num_scenarios(m)
-default_probability(::Void) = 1.0
+default_probability(model::JuMP.Model) = inv(num_scenarios(model))
+default_probability(::Nothing) = 1.0
 
 # ---------------
 # StructuredModel
 # ---------------
 
-function structprinthook(io::IO, m::Model)
-    print(io, m, ignore_print_hook=true)
+function structprinthook(io::IO, model::Model)
+    print(io, model, ignore_print_hook=true)
     print(io, "*** children ***\n")
     # TODO it would be nice to indent all the children
     # essentially wrap the IO object (subclass it) to add 4 spaces before each line
     # this would then recursively be wrapped as more stages are added
-    for (id, mm) in getchildren(m)
-      @printf(io, "Child ID %d:\n", id)
-      print(io, mm)
+    for (id, child_model) in getchildren(model)
+      Compat.Printf.@printf(io, "Child ID %d:\n", id)
+      print(io, child_model)
       print(io, "\n")
     end
 end
 
-type DummyMPIWrapper
+mutable struct DummyMPIWrapper
     comm::Int
     init::Function
 
-    DummyMPIWrapper() = new(-1,identity)
+    DummyMPIWrapper() = new(-1, identity)
 end
 const dummy_mpi_wrapper = DummyMPIWrapper()
 
 # Constructor with the number of scenarios
 function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, same_children_as=nothing, id=0, comm=nothing, num_scenarios::Int=0, prob::Float64=default_probability(parent), mpi_wrapper=dummy_mpi_wrapper)
     _comm = (comm == nothing ? mpi_wrapper.comm : comm)
-    m = JuMP.Model(solver=solver)
+    model = JuMP.Model(solver=solver)
     if parent === nothing
         id = 0
         mpi_wrapper.init(_comm)
-        if isdefined(:StructJuMPSolverInterface)
-            JuMP.setsolvehook(m,StructJuMPSolverInterface.sj_solve)
+        if isdefined(@__MODULE__, :StructJuMPSolverInterface)
+            JuMP.setsolvehook(model, StructJuMPSolverInterface.sj_solve)
         end
     else
         @assert id != 0
         stoch = getStructure(parent)
-        stoch.children[id] = m
+        stoch.children[id] = model
         stoch.probability[id] = prob
     end
 
@@ -86,12 +88,15 @@ function StructuredModel(;solver=JuMP.UnsetSolver(), parent=nothing, same_childr
         probability = Dict{Int, Float64}()
         children = Dict{Int, JuMP.Model}()
     end
-    m.ext[:Stochastic] = StructureData(probability, children, parent, num_scenarios, Dict{JuMP.Variable,JuMP.Variable}(), mpi_wrapper)
+    model.ext[:Stochastic] = StructureData(probability, children, parent,
+                                           num_scenarios,
+                                           Dict{JuMP.Variable,JuMP.Variable}(),
+                                           mpi_wrapper)
 
     # Printing children is important as well
-    JuMP.setprinthook(m, structprinthook)
+    JuMP.setprinthook(model, structprinthook)
 
-    m
+    return model
 end
 
 # -------------
@@ -112,7 +117,7 @@ function getProcIdxSet(m::JuMP.Model)
     return getProcIdxSet(getStructure(m).mpi_wrapper, numScens)
 end
 
-macro second_stage(m,ind,code)
+macro second_stage(m, ind,code)
     return quote
         proc_idx_set = getProcIdxSet($(esc(m)))
         for $(esc(ind)) in proc_idx_set

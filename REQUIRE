@@ -1,4 +1,5 @@
-julia 0.5
-JuMP 0.17
+julia 0.6
+JuMP 0.18.3
 MathProgBase
 ReverseDiffSparse
+Compat 1.0

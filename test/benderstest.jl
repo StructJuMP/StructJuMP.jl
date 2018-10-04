@@ -1,8 +1,12 @@
+using Compat
+using Compat.LinearAlgebra # for norm
+using Compat.Test
+
 using JuMP
 using StructJuMP
+
 using ECOS
 using Cbc
-using Base.Test
 
 misocp_solver = CbcSolver()
 socp_solver = ECOS.ECOSSolver(verbose=false)

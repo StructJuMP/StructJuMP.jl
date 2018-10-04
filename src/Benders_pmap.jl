@@ -5,7 +5,7 @@
  s.t. b_0 - A_0 x           \in K_0,
       b_i - A_i x - B_i y_i \in K_i, \forall i = 1,...,S
                 x           \in C_0,
-                x_I         \in Z 
+                x_I         \in Z
                         y_i \in C_i, \forall i = 1,...,S
 
  where input to the Benders engine is:
@@ -20,18 +20,19 @@
  call with: julia -p <num_threads> <myscript>
 ================================================================#
 using JuMP
+using Compat.Distributed
 
 # this function loads and solves a conic problem and returns its dual
 function loadAndSolveConicProblem(c, A, b, K, C, solver)
-    
+
     # load conic model
     model = MathProgBase.ConicModel(solver)
     MathProgBase.loadproblem!(model, c, A, b, K, C)
-  
-    #println(model) 
+
+    #println(model)
     #println("process id $(myid()) started")
     #@show c, A, b, K, C
- 
+
     # solve conic model
     MathProgBase.optimize!(model)
     status = MathProgBase.status(model)
@@ -69,7 +70,7 @@ function loadMasterProblem(c, A, b, K, C, v, num_scen, solver)
                 error("unrecognized cone $cone")
             end
         end
-    end       
+    end
     # add variable cones
     for (cone, ind) in C
         if cone == :Zero
@@ -159,22 +160,22 @@ function Benders_pmap(c_all, A_all, B_all, b_all, K_all, C_all, v, master_solver
         separator = zeros(num_master_var)
         for i = 1:num_master_var
             separator[i] = getvalue(x[i])
-        end 
+        end
         new_rhs = [zeros(num_bins[i]) for i in 1:num_scen]
         for i = 1:num_scen
             new_rhs[i] = b_all[i+1] - A_all[i+1] * separator
         end
 
-        output = pmap(loadAndSolveConicProblem, 
-            [c_all[i+1] for i = 1:num_scen], 
-            [B_all[i] for i = 1:num_scen], 
-            [new_rhs[i] for i = 1:num_scen], 
-            [K_all[i+1] for i = 1:num_scen], 
-            [C_all[i+1] for i = 1:num_scen], 
+        output = pmap(loadAndSolveConicProblem,
+            [c_all[i+1] for i = 1:num_scen],
+            [B_all[i] for i = 1:num_scen],
+            [new_rhs[i] for i = 1:num_scen],
+            [K_all[i+1] for i = 1:num_scen],
+            [C_all[i+1] for i = 1:num_scen],
             [sub_solver for i = 1:num_scen])
 
         #@show output
         cut_added = addCuttingPlanes(master_model, num_scen, A_all, b_all, output, x, θ, separator, TOL)
     end
-    return status, objval, separator 
+    return status, objval, separator
 end
