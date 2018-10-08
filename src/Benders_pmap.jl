@@ -106,7 +106,7 @@ function addCuttingPlanes(master_model, num_scen, A_all, b_all, output, x, θ, s
     for i = 1:num_scen
         #@show typeof(b_all[i+1])
         coef = vec(output[i][2]' * A_all[i+1])
-        rhs = vecdot(output[i][2], b_all[i+1])
+        rhs = dot(output[i][2], b_all[i+1])
         #@show size(coef*separator'), size(rhs)
         # add an infeasibility cut
         if output[i][1] == :Infeasible
