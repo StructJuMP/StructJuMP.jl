@@ -3,9 +3,9 @@ os:
     - linux
     - osx
 julia:
-    - 0.5
     - 0.6
-    - nightly
+    - 0.7
+    - 1.0
 notifications:
     email: false
 sudo: false
@@ -15,9 +15,5 @@ addons:
         - liblapack-dev
         - libgmp-dev
         - libglpk-dev
-script:
-    - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-    - julia -e 'Pkg.clone(pwd())'
-    - julia --check-bounds=yes -e 'Pkg.test("StructJuMP", coverage=true)'
 after_success:
   - julia -e 'cd(Pkg.dir("StructJuMP")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
