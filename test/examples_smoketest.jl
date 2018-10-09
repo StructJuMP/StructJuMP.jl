@@ -1,4 +1,4 @@
-using Base.Test
+using Compat, Compat.Test
 
 
 include("../examples/easy_test.jl")
