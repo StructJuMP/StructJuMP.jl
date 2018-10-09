@@ -1,6 +1,7 @@
-using StructJuMP
-using Base.Test
+using Compat
+using Compat.Test
 
+using StructJuMP
 
 @testset "printhook" begin
 
@@ -21,5 +22,5 @@ using Base.Test
     end
 
     str = string(m)
-    @test contains(str, "Child")
+    @test occursin("Child", str)
 end
