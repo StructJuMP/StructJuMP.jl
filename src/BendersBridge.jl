@@ -193,8 +193,9 @@ function DLP(m::Model, solver)
             A_dlp[rows:rows_end, cols:cols_end] = B_all[i-1]
         end
         
-        append!(K_dlp, [(cone, rows-1 + idx) for (cone, idx) in K_all[i]])
-        append!(C_dlp, [(cone, cols-1 + idx) for (cone, idx) in C_all[i]])
+        append!(K_dlp, [(cone, rows-1 .+ idx) for (cone, idx) in K_all[i]])
+        append!(K_dlp, [(cone, rows-1 .+ idx) for (cone, idx) in K_all[i]])
+        append!(C_dlp, [(cone, cols-1 .+ idx) for (cone, idx) in C_all[i]])
         rows = rows_end+1
         cols = cols_end+1
     end
