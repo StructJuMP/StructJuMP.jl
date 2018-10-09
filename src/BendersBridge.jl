@@ -95,7 +95,7 @@ function conicconstraintdata(m::Model)
 
     # The conic MPB interface defines conic problems as
     # always being minimization problems, so flip if needed
-    m.objSense == :Max && rmul!(f_s, -1.0)
+    m.objSense == :Max && Compat.rmul!(f_s, -1.0)
 
     if numMasterCols > 0
         JuMP.rescaleSDcols!(spzeros(numMasterCols), J_m, V_m, parent)
