@@ -31,7 +31,7 @@ mutable struct StructuredModel <: JuMP.AbstractModel
     nextconidx::Int                                 # Next constraint index is nextconidx+1
     constraints::Dict{Int, JuMP.AbstractConstraint} # Map conidx -> variable
     connames::Dict{Int, String}                     # Map varidx -> name
-    objective_sense::Symbol
+    objective_sense::MOI.OptimizationSense
     objective_function::JuMP.AbstractJuMPScalar
     objdict::Dict{Symbol, Any}                      # Same that JuMP.Model's field `objdict`
     function StructuredModel(; parent=nothing, same_children_as=nothing, id=0,
@@ -51,7 +51,7 @@ mutable struct StructuredModel <: JuMP.AbstractModel
         model = new(parent, children, probability, num_scenarios,                    # Structured
                     0, Dict{Int, JuMP.AbstractVariable}(),   Dict{Int, String}(),    # Model Variables
                     0, Dict{Int, JuMP.AbstractConstraint}(), Dict{Int, String}(),    # Model Constraints
-                    :Min, zero(JuMP.GenericAffExpr{Float64, StructuredVariableRef}), # Model objective
+                    MOI.FeasibilitySense, zero(JuMP.GenericAffExpr{Float64, StructuredVariableRef}), # Model objective
                     Dict{Symbol, Any}())                                             # Model objects
 
         if parent === nothing
@@ -179,7 +179,8 @@ function JuMP.constraint_object(cref::StructuredConstraintRef, F::Type, S::Type)
 end
 
 # Objective
-function JuMP.set_objective(m::StructuredModel, sense::Symbol, f::JuMP.AbstractJuMPScalar)
+function JuMP.set_objective(m::StructuredModel, sense::MOI.OptimizationSense,
+                            f::JuMP.AbstractJuMPScalar)
     m.objective_sense = sense
     m.objective_function = f
 end

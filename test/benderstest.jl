@@ -12,12 +12,12 @@ socp_solver = with_optimizer(ECOS.Optimizer, verbose=false)
 #@testset "[Benders] conicconstraintdata with more variables in parent" begin
 #    m = StructuredModel(num_scenarios=1)
 #    @variable(m, x[1:2])
-#    @objective(m, :Min, sum(x))
+#    @objective(m, Min, sum(x))
 #
 #    bl = StructuredModel(parent=m, id=1)
 #    @variable(bl, y)
 #    @constraint(bl, 4y + 5x[1] + 6x[2] >= 2)
-#    @objective(bl, :Max, 3y)
+#    @objective(bl, Max, 3y)
 #
 #    c, A, B, b, var_cones, con_cones, v = StructJuMP.conicconstraintdata(bl)
 #    @test c == [-3]
@@ -37,7 +37,7 @@ socp_solver = with_optimizer(ECOS.Optimizer, verbose=false)
     m = StructuredModel(num_scenarios=0)
     @variable(m, x, Int)
     @constraint(m, x <= 4)
-    @objective(m, :Min, -5*x)
+    @objective(m, Min, -5*x)
 
     sol = BendersBridge(m, misocp_solver, socp_solver)
 
@@ -54,14 +54,14 @@ end
     @variable(m, x, Int)
 
     @constraint(m, x <= 1)
-    @objective(m, :Min, -5*x)
+    @objective(m, Min, -5*x)
 
     bl = StructuredModel(parent=m, id=1)
     @variable(bl, y1 >= 2)
     @variable(bl, y2 <= 2)
     @constraint(bl, x >= y1)
     @constraint(bl, [y2, y1] in SecondOrderCone())
-    @objective(bl, :Min, 2*y1 + y2)
+    @objective(bl, Min, 2*y1 + y2)
 
     sol = BendersBridge(m, misocp_solver, socp_solver)
 
@@ -77,14 +77,14 @@ end
     @variable(m, x, Int)
 
     @constraint(m, x <= 4)
-    @objective(m, :Min, -5*x)
+    @objective(m, Min, -5*x)
 
     bl = StructuredModel(parent=m, id=1)
     @variable(bl, y1 >= 0)
     @variable(bl, y2 <= 2)
     @constraint(bl, x <= y1)
     @constraint(bl, [y2, y1] in SecondOrderCone())
-    @objective(bl, :Min, 2*y1 + y2)
+    @objective(bl, Min, 2*y1 + y2)
 
     sol = BendersBridge(m, misocp_solver, socp_solver)
 
@@ -101,14 +101,14 @@ end
     @variable(m, x, Int)
 
     @constraint(m, x <= 4)
-    @objective(m, :Min, -5*x)
+    @objective(m, Min, -5*x)
 
     bl = StructuredModel(parent=m, id=1)
     @variable(bl, y1 >= 2)
     @variable(bl, y2 <= 4)
     @constraint(bl, x <= y1)
     @constraint(bl, [y2, y1] in SecondOrderCone())
-    @objective(bl, :Min, 2*y1 + y2)
+    @objective(bl, Min, 2*y1 + y2)
 
     sol = BendersBridge(m, misocp_solver, socp_solver)
 

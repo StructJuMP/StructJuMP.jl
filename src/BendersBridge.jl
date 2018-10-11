@@ -103,7 +103,7 @@ function ParametrizedModel(structured_model::StructuredModel, args...; kwargs...
     objective_function = parametrized_function(structured_model.objective_function,
                                                structured_model, model,
                                                variable_map, parameter_map)
-    if structured_model.objective_sense == :Max
+    if structured_model.objective_sense == MOI.MaxSense
         objective_function = -objective_function
     end
     θ = Dict{Int, VariableRef}()
