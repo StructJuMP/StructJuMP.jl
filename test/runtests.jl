@@ -1,7 +1,7 @@
-include("printhook.jl")
-
+#include("printhook.jl")
+#
 include("benderstest.jl")
-
-include("farmer.jl")
-
-include("examples_smoketest.jl")
+#
+#include("farmer.jl")
+#
+#include("examples_smoketest.jl")

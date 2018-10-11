@@ -1,181 +1,112 @@
-#================================================================
- This package solves the following problem parallely
-
- min  c_0^T x + \sum{i = 1}^S c_i^Ty_i
- s.t. b_0 - A_0 x           \in K_0,
-      b_i - A_i x - B_i y_i \in K_i, \forall i = 1,...,S
-                x           \in C_0,
-                x_I         \in Z
-                        y_i \in C_i, \forall i = 1,...,S
-
- where input to the Benders engine is:
- c_all is an array of c_0, c_1, c_2, ... , c_S objective coefficients
- A_all is an array of A_0, A_1, A_2, ... , A_S constraint matrices of master variables
- B_all is an array of      B_1, B_2, ... , B_S constraint matrices of scenario variables (note that scenario variables do not appear at master constraints)
- b_all is an array of b_0, b_1, b_2, ... , b_S right hand side of constraints
- K_all is an array of K_0, K_1, K_2, ... , K_S constraint cones
- C_all is an array of C_0, C_1, C_2, ... , C_S variable cones
- v     is an array of master variable types (i.e. :Bin, :Int, :Cont)
-
- call with: julia -p <num_threads> <myscript>
-================================================================#
-using JuMP
-using Compat.Distributed
-
-# this function loads and solves a conic problem and returns its dual
-function loadAndSolveConicProblem(c, A, b, K, C, solver)
-
-    # load conic model
-    model = MathProgBase.ConicModel(solver)
-    MathProgBase.loadproblem!(model, c, A, b, K, C)
-
-    #println(model)
-    #println("process id $(myid()) started")
-    #@show c, A, b, K, C
-
-    # solve conic model
-    MathProgBase.optimize!(model)
-    status = MathProgBase.status(model)
-
-    # return status and dual
-    #println("process id $(myid()) status $(status)")
-    return status, MathProgBase.getdual(model)
+struct Solution
+    feasible::Bool
+    objective_value::Float64
+    # Map between the variable ref
+    # and the primal value
+    variable_value::Dict{JuMP.VariableRef, Float64}
+    # Map between the parameter
+    # and the dual value
+    parameter_dual::Dict{Parameter, Float64}
 end
 
-function loadMasterProblem(c, A, b, K, C, v, num_scen, solver)
-    num_var = length(c)
-    # load master problem
-    master_model = Model(solver=solver)
-    @variable(master_model, x[1:num_var])
-    for i = 1:num_var
-        setcategory(x[i], v[i])
-    end
-    # add new objective variables for scenarios
-    # we assume the objective is sum of nonnegative terms
-    @variable(master_model, θ[1:num_scen] >= 0.0)
-    @objective(master_model, :Min, sum(c[i]*x[i] for i in 1:num_var) + sum(θ))
-    # add constraint cones
-    for (cone, ind) in K
-        for i in 1:length(ind)
-            if cone == :Zero
-                @constraint(master_model, dot(A[ind[i],:], x) == b[ind[i]])
-            elseif cone == :NonNeg
-                @constraint(master_model, dot(A[ind[i],:], x) <= b[ind[i]])
-            elseif cone == :NonPos
-                @constraint(master_model, dot(A[ind[i],:], x) >= b[ind[i]])
-            elseif cone == :SOC
-                @constraint(master_model, norm(b[ind[2:end-1]] - A[ind[2:end-1],:]*x) .<= b[ind[1]] - A[ind[1],:]*x)
-                @constraint(master_model, dot(A[ind[1],:], x) <= b[ind[1]])
-            else
-                error("unrecognized cone $cone")
-            end
-        end
-    end
-    # add variable cones
-    for (cone, ind) in C
-        if cone == :Zero
-            for i in ind
-                setlowerbound(x[i], 0.0)
-                setupperbound(x[i], 0.0)
-            end
-        elseif cone == :Free
-            # do nothing
-        elseif cone == :NonNeg
-            for i in ind
-                setlowerbound(x[i], 0.0)
-            end
-        elseif cone == :NonPos
-            for i in ind
-                setupperbound(x[i], 0.0)
-            end
-        elseif cone == :SOC
-            @constraint(master_model, norm(x[ind[2:end-1]]) <= x[ind[1]])
-            setlowerbound(x[ind[1]], 0.0)
+function optimize(model::ParametrizedModel)
+    JuMP.optimize!(model.model)
+    feasible = JuMP.primal_status(model.model) == MOI.FeasiblePoint
+    if feasible
+        @assert JuMP.termination_status(model.model) == MOI.Success
+        objective_value = JuMP.objective_value(model.model)
+    else
+        if isempty(model.parameter_map)
+            # This is the master model so we don't need to generate infeasibility ray
+            # hence the status can be `MOI.InfeasibleNoResult`. This happens for instance
+            # if the problem is a MIP.
+            @assert JuMP.termination_status(model.model) in (MOI.Success, MOI.InfeasibleNoResult)
         else
-            error("unrecognized cone $cone")
+            @assert JuMP.termination_status(model.model) == MOI.Success
+            @assert JuMP.dual_status(model.model) == MOI.InfeasibilityCertificate
+        end
+        objective_value = JuMP.objective_bound(model.model)
+    end
+    variable_value = Dict{JuMP.VariableRef, Float64}()
+    if feasible
+        for vref in values(model.variable_map)
+            variable_value[vref] = JuMP.result_value(vref)
+        end
+        for θ in values(model.θ)
+            variable_value[θ] = JuMP.result_value(θ)
         end
     end
-
-    #setcategory(master_model, [v;[:Cont for i = 1:num_scen]])
-    return master_model, x, θ
+    parameter_dual = Dict{Parameter, Float64}()
+    for parameter in values(model.parameter_map)
+        parameter_dual[parameter] = JuMP.result_dual(parameter)
+    end
+    Solution(feasible, objective_value, variable_value, parameter_dual)
 end
 
-function addCuttingPlanes(master_model, num_scen, A_all, b_all, output, x, θ, separator, TOL)
+function set_parent_solution!(model::ParametrizedModel, parent::ParametrizedModel, parent_solution::Solution)
+    for (index, parameter) in model.parameter_map
+        vref = parent.variable_map[index]
+        value = parent_solution.variable_value[vref]
+        ParameterJuMP.setvalue!(parameter, value)
+    end
+end
+
+function add_cutting_planes(master_model, master_solution, sub_models, sub_solutions, TOL)
     cut_added = false
     # add cutting planes, one per scenario
-    for i = 1:num_scen
-        #@show typeof(b_all[i+1])
-        coef = vec(output[i][2]' * A_all[i+1])
-        rhs = dot(output[i][2], b_all[i+1])
-        #@show size(coef*separator'), size(rhs)
-        # add an infeasibility cut
-        if output[i][1] == :Infeasible
-            # output[i][2] is a ray
-            # so alpha * output[i][2] is also valid for any alpha >= 0.
-            # Hence output[i][2] might have very large coefficients and alter
+    for (id, sol) = sub_solutions
+        sub_model = sub_models[id]
+        aff = JuMP.GenericAffExpr{Float64, JuMP.VariableRef}(sol.objective_value)
+        for (index, parameter) in sub_model.parameter_map
+            dual = sol.parameter_dual[parameter]
+            vref = master_model.variable_map[index]
+            aff.constant -= dual * master_solution.variable_value[vref]
+            JuMP.add_to_expression!(aff, dual, vref)
+        end
+        if sol.feasible
+            # Check if the cut is useful
+            JuMP.add_to_expression!(aff, -1.0, master_model.θ[id])
+            if JuMP.value(aff, vref -> master_solution.variable_value[vref]) - TOL < 0
+                continue
+            end
+        else
+            # It is a ray, so `alpha * aff` is also valid for any alpha >= 0.
+            # Hence `aff` might have very large coefficients and alter
             # the numerical accuracy of the master's solver.
             # We scale it to avoid this issue
-            scaling = abs(rhs)
-            if scaling == 0
-              scaling = maximum(coef)
+            scaling = abs(aff.constant)
+            if iszero(scaling)
+                scaling = maximum(term -> term[1], aff.terms)
             end
-            @constraint(master_model, dot(coef/scaling, x) <= sign(rhs))
-            cut_added = true
-        # add an optimality cut
-        else
-            if getvalue(θ[i]) < (dot(coef, separator) - rhs)[1] - TOL
-                @constraint(master_model, dot(coef, x) - θ[i] <= rhs)
-                cut_added = true
+            scaled_aff = typeof(aff)(sign(aff.constant))
+            for (coef, var) in JuMP.linear_terms(aff)
+                JuMP.add_to_expression!(scaled_aff, coef / scaling, var)
             end
+            aff = scaled_aff
         end
+        @constraint(master_model.model, aff <= 0)
+        cut_added = true
     end
     return cut_added
-
 end
 
-function Benders_pmap(c_all, A_all, B_all, b_all, K_all, C_all, v, master_solver, sub_solver, TOL=1e-5)
-    #println("Benders pmap started")
-    num_master_var = length(c_all[1])
-    num_scen = length(c_all) - 1
-
-    num_bins = zeros(Int, num_scen)
-    for i = 1:num_scen
-        num_bins[i] = length(b_all[i+1])
-    end
-
-    #println("Load master problem")
-    (master_model, x, θ) = loadMasterProblem(c_all[1], A_all[1], b_all[1], K_all[1], C_all[1], v, num_scen, master_solver)
-
+function Benders_pmap(master_model::ParametrizedModel,
+                      sub_models::Dict{Int, ParametrizedModel},
+                      TOL=1e-5)::Solution
+    master_solution = nothing
     cut_added = true
-    separator = zeros(num_master_var)
-    objval = Inf
-    status = :Infeasible
     while cut_added
-        #println("Iteration started")
-        status = solve(master_model)
-        if status == :Infeasible
+        master_solution = optimize(master_model)
+        if !master_solution.feasible
             break
         end
-        objval = getobjectivevalue(master_model)
-        separator = zeros(num_master_var)
-        for i = 1:num_master_var
-            separator[i] = getvalue(x[i])
-        end
-        new_rhs = [zeros(num_bins[i]) for i in 1:num_scen]
-        for i = 1:num_scen
-            new_rhs[i] = b_all[i+1] - A_all[i+1] * separator
+
+        for (id, sub_model) in sub_models
+            set_parent_solution!(sub_model, master_model, master_solution)
         end
 
-        output = pmap(loadAndSolveConicProblem,
-            [c_all[i+1] for i = 1:num_scen],
-            [B_all[i] for i = 1:num_scen],
-            [new_rhs[i] for i = 1:num_scen],
-            [K_all[i+1] for i = 1:num_scen],
-            [C_all[i+1] for i = 1:num_scen],
-            [sub_solver for i = 1:num_scen])
-
-        #@show output
-        cut_added = addCuttingPlanes(master_model, num_scen, A_all, b_all, output, x, θ, separator, TOL)
+        sub_solutions = Dict(map(x -> (x[1] => optimize(x[2])), collect(sub_models))...)
+        cut_added = add_cutting_planes(master_model, master_solution, sub_models, sub_solutions, TOL)
     end
-    return status, objval, separator
+    return master_solution
 end

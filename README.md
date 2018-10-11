@@ -4,6 +4,22 @@ The StructJuMP package provides a parallel algebraic modeling framework for bloc
 [![Build Status](https://travis-ci.org/StructJuMP/StructJuMP.jl.svg?branch=master)](https://travis-ci.org/StructJuMP/StructJuMP.jl)
 
 ## Installation
+
+The most recently tagged version of this package works with
+most recently tagged version of [JuMP](https://github.com/JuliaOpt/JuMP.jl),
+i.e. JuMP v0.18.x, to try this package with JuMP v0.18, simply do
+```julia
+] add StructJuMP
+```
+The development of this package for JuMP v0.18.x is done in the `release-0.1`
+branch.
+The `master` branch of this package works with the JuMP v0.19-alpha. To try this
+package with JuMP v0.19-alpha, do:
+```julia
+] add JuMP#v0.19-alpha
+] add StructJuMP#master
+```
+
 ```julia
 Pkg.add("StructJuMP")
 ```
@@ -26,7 +42,7 @@ for i in 1:numScen
     @NLobjective(bl, Min, y[1]^2 + y[2]^2 + y[1]*y[2])
 end
 ```
-The above example builds a two level structured model `m` with 2 scenarios. 
+The above example builds a two level structured model `m` with 2 scenarios.
 
 ## Available Solvers for StructJuMP
 
