@@ -20,10 +20,6 @@ package with JuMP v0.19-alpha, do:
 ] add StructJuMP#master
 ```
 
-```julia
-Pkg.add("StructJuMP")
-```
-
 ## An example
 ```julia
 using StructJuMP
