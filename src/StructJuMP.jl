@@ -107,48 +107,127 @@ end
 MOI.is_valid(m::StructuredModel, vref::StructuredVariableRef) = vref.idx in keys(m.variables)
 JuMP.num_variables(m::StructuredModel) = length(m.variables)
 
-JuMP.has_lower_bound(vref::StructuredVariableRef) = vref.model.variables[vref.idx].info.haslb
+# Internal function
+variable_info(vref::StructuredVariableRef) = vref.model.variables[vref.idx].info
+function update_variable_info(vref::StructuredVariableRef, info::JuMP.VariableInfo)
+    vref.model.variables[vref.idx] = JuMP.ScalarVariable(info)
+end
+
+JuMP.has_lower_bound(vref::StructuredVariableRef) = variable_info(vref).has_lb
 function JuMP.lower_bound(vref::StructuredVariableRef)
     @assert !JuMP.is_fixed(vref)
-    vref.model.variables[vref.idx].info.lowerbound
+    variable_info(vref).lower_bound
 end
 function JuMP.set_lower_bound(vref::StructuredVariableRef, lower)
-    vref.model.variables[vref.idx].info.haslb = true
-    vref.model.variables[vref.idx].info.lowerbound = lower
+    info = variable_info(vref)
+    update_variable_info(vref,
+                         JuMP.VariableInfo(true, lower,
+                                           info.has_ub, info.upper_bound,
+                                           info.has_fix, info.fixed_value,
+                                           info.has_start, info.start,
+                                           info.binary, info.integer))
 end
-JuMP.has_upper_bound(vref::StructuredVariableRef) = vref.model.variables[vref.idx].info.hasub
+function JuMP.delete_lower_bound(vref::StructuredVariableRef)
+    info = variable_info(vref)
+    update_variable_info(vref,
+                         JuMP.VariableInfo(false, info.lower_bound,
+                                           info.has_ub, info.upper_bound,
+                                           info.has_fix, info.fixed_value,
+                                           info.has_start, info.start,
+                                           info.binary, info.integer))
+end
+JuMP.has_upper_bound(vref::StructuredVariableRef) = variable_info(vref).has_ub
 function JuMP.upper_bound(vref::StructuredVariableRef)
-    @assert !JuMP.isfixed(vref)
-    vref.model.variables[vref.idx].info.upperbound
+    @assert !JuMP.is_fixed(vref)
+    variable_info(vref).upper_bound
 end
 function JuMP.set_upper_bound(vref::StructuredVariableRef, upper)
-    vref.model.variables[vref.idx].info.hasub = true
-    vref.model.variables[vref.idx].info.upperbound = upper
+    info = variable_info(vref)
+    update_variable_info(vref,
+                         JuMP.VariableInfo(info.has_lb, info.lower_bound,
+                                           true, upper,
+                                           info.has_fix, info.fixed_value,
+                                           info.has_start, info.start,
+                                           info.binary, info.integer))
 end
-JuMP.is_fixed(vref::StructuredVariableRef) = vref.model.variables[vref.idx].info.hasfix
-JuMP.fix_value(vref::StructuredVariableRef) = vref.model.variables[vref.idx].info.fixedvalue
+function JuMP.delete_upper_bound(vref::StructuredVariableRef)
+    info = variable_info(vref)
+    update_variable_info(vref,
+                         JuMP.VariableInfo(info.has_lb, info.lower_bound,
+                                           false, info.upper_bound,
+                                           info.has_fix, info.fixed_value,
+                                           info.has_start, info.start,
+                                           info.binary, info.integer))
+end
+JuMP.is_fixed(vref::StructuredVariableRef) = variable_info(vref).has_fix
+JuMP.fix_value(vref::StructuredVariableRef) = variable_info(vref).fixed_value
 function JuMP.fix(vref::StructuredVariableRef, value)
-    vref.model.variables[vref.idx].info.fixedvalue = value
+    info = variable_info(vref)
+    update_variable_info(vref,
+                         JuMP.VariableInfo(info.has_lb, info.lower_bound,
+                                           info.has_ub, info.upper_bound,
+                                           true, value,
+                                           info.has_start, info.start,
+                                           info.binary, info.integer))
 end
-JuMP.start_value(vref::StructuredVariableRef) = vref.model.variables[vref.idx].info.start
+function JuMP.unfix(vref::StructuredVariableRef)
+    info = variable_info(vref)
+    update_variable_info(vref,
+                         JuMP.VariableInfo(info.has_lb, info.lower_bound,
+                                           info.has_ub, info.upper_bound,
+                                           false, info.fixed_value,
+                                           info.has_start, info.start,
+                                           info.binary, info.integer))
+end
+JuMP.start_value(vref::StructuredVariableRef) = variable_info(vref).start
 function JuMP.set_start_value(vref::StructuredVariableRef, start)
-    vref.model.variables[vref.idx].info.start = start
+    info = variable_info(vref)
+    update_variable_info(vref,
+                         JuMP.VariableInfo(info.has_lb, info.lower_bound,
+                                           info.has_ub, info.upper_bound,
+                                           info.has_fix, info.fixed_value,
+                                           true, start,
+                                           info.binary, info.integer))
 end
-JuMP.is_binary(vref::StructuredVariableRef) = vref.model.variables[vref.idx].info.binary
+JuMP.is_binary(vref::StructuredVariableRef) = variable_info(vref).binary
 function JuMP.set_binary(vref::StructuredVariableRef)
-    @assert !JuMP.isinteger(vref)
-    vref.model.variables[vref.idx].info.binary = true
+    @assert !JuMP.is_integer(vref)
+    info = variable_info(vref)
+    update_variable_info(vref,
+                         JuMP.VariableInfo(info.has_lb, info.lower_bound,
+                                           info.has_ub, info.upper_bound,
+                                           info.has_fix, info.fixed_value,
+                                           info.has_start, info.start,
+                                           true, info.integer))
 end
 function JuMP.unset_binary(vref::StructuredVariableRef)
-    vref.model.variables[vref.idx].info.binary = false
+    info = variable_info(vref)
+    update_variable_info(vref,
+                         JuMP.VariableInfo(info.has_lb, info.lower_bound,
+                                           info.has_ub, info.upper_bound,
+                                           info.has_fix, info.fixed_value,
+                                           info.has_start, info.start,
+                                           false, info.integer))
 end
-JuMP.is_integer(vref::StructuredVariableRef) = vref.model.variables[vref.idx].info.integer
+JuMP.is_integer(vref::StructuredVariableRef) = variable_info(vref).integer
 function JuMP.set_integer(vref::StructuredVariableRef)
-    @assert !JuMP.isbinary(vref)
-    vref.model.variables[vref.idx].info.integer = true
+    @assert !JuMP.is_binary(vref)
+    info = variable_info(vref)
+    update_variable_info(vref,
+                         JuMP.VariableInfo(info.has_lb, info.lower_bound,
+                                           info.has_ub, info.upper_bound,
+                                           info.has_fix, info.fixed_value,
+                                           info.has_start, info.start,
+                                           info.binary, true))
 end
 function JuMP.unset_integer(vref::StructuredVariableRef)
-    vref.model.variables[vref.idx].info.integer = false
+    info = variable_info(vref)
+    update_variable_info(vref,
+                         JuMP.VariableInfo(info.has_lb, info.lower_bound,
+                                           info.has_ub, info.upper_bound,
+                                           info.has_fix, info.fixed_value,
+                                           info.has_start, info.start,
+                                           info.binary, false))
 end
 
 # Constraints
