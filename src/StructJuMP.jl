@@ -2,8 +2,6 @@ module StructJuMP
 
 export StructuredModel
 
-using Compat
-
 using MathOptInterface
 const MOI = MathOptInterface
 
@@ -19,7 +17,7 @@ end
 
 mutable struct StructuredModel <: JuMP.AbstractModel
     # Structured data
-    parent::Union{StructuredModel, Compat.Nothing}
+    parent::Union{StructuredModel, Nothing}
     children::Dict{Int, StructuredModel}
     probability::Dict{Int, Float64}
     num_scen::Int
@@ -74,7 +72,7 @@ getprobability(model::StructuredModel) = model.probability
 num_scenarios(model::StructuredModel)  = model.num_scen
 
 default_probability(model::StructuredModel) = 1 / num_scenarios(model)
-default_probability(::Compat.Nothing) = 1.0
+default_probability(::Nothing) = 1.0
 
 #### Model ####
 
@@ -85,9 +83,7 @@ struct StructuredVariableRef <: JuMP.AbstractVariableRef
     model::StructuredModel # `model` owning the variable
     idx::Int       # Index in `model.variables`
 end
-if VERSION >= v"0.7-"
-    Base.broadcastable(v::StructuredVariableRef) = Ref(v)
-end
+Base.broadcastable(v::StructuredVariableRef) = Ref(v)
 Base.copy(v::StructuredVariableRef) = v
 Base.:(==)(v::StructuredVariableRef, w::StructuredVariableRef) = v.model === w.model && v.idx == w.idx
 JuMP.owner_model(v::StructuredVariableRef) = v.model

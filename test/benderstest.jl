@@ -2,8 +2,7 @@ using StructJuMP
 
 using ECOS
 using GLPK
-using Compat
-using Compat.Test
+using Test
 
 #misocp_solver = CbcSolver()
 misocp_solver = with_optimizer(GLPK.Optimizer)
