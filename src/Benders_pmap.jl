@@ -30,15 +30,15 @@ function optimize(model::ParametrizedModel)
     variable_value = Dict{JuMP.VariableRef, Float64}()
     if feasible
         for vref in values(model.variable_map)
-            variable_value[vref] = JuMP.result_value(vref)
+            variable_value[vref] = JuMP.value(vref)
         end
         for θ in values(model.θ)
-            variable_value[θ] = JuMP.result_value(θ)
+            variable_value[θ] = JuMP.value(θ)
         end
     end
     parameter_dual = Dict{Parameter, Float64}()
     for parameter in values(model.parameter_map)
-        parameter_dual[parameter] = JuMP.result_dual(parameter)
+        parameter_dual[parameter] = JuMP.dual(parameter)
     end
     Solution(feasible, objective_value, variable_value, parameter_dual)
 end
