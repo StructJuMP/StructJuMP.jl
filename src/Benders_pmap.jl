@@ -1,6 +1,8 @@
-struct Solution
+include("dual_objective_value.jl")
+
+mutable struct Solution
     feasible::Bool
-    objective_value::Float64
+    objective_value::Union{Nothing, Float64}
     # Map between the variable ref
     # and the primal value
     variable_value::Dict{JuMP.VariableRef, Float64}
@@ -21,11 +23,13 @@ function optimize(model::ParametrizedModel)
             # hence the status can be `MOI.InfeasibleNoResult`. This happens for instance
             # if the problem is a MIP.
             @assert JuMP.termination_status(model.model) in (MOI.Success, MOI.InfeasibleNoResult)
+            objective_value = nothing
         else
             @assert JuMP.termination_status(model.model) == MOI.Success
             @assert JuMP.dual_status(model.model) == MOI.InfeasibilityCertificate
+            objective_value = dual_objective_value(JuMP.backend(model.model),
+                                                   Float64)
         end
-        objective_value = JuMP.objective_bound(model.model)
     end
     variable_value = Dict{JuMP.VariableRef, Float64}()
     if feasible
@@ -56,7 +60,7 @@ function add_cutting_planes(master_model, master_solution, sub_models, sub_solut
     # add cutting planes, one per scenario
     for (id, sol) = sub_solutions
         sub_model = sub_models[id]
-        aff = JuMP.GenericAffExpr{Float64, JuMP.VariableRef}(sol.objective_value)
+        aff = JuMP.AffExpr(sol.objective_value)
         for (index, parameter) in sub_model.parameter_map
             dual = sol.parameter_dual[parameter]
             vref = master_model.variable_map[index]
@@ -64,8 +68,8 @@ function add_cutting_planes(master_model, master_solution, sub_models, sub_solut
             JuMP.add_to_expression!(aff, dual, vref)
         end
         if sol.feasible
-            # Check if the cut is useful
             JuMP.add_to_expression!(aff, -1.0, master_model.θ[id])
+            # Check if the cut is useful
             if JuMP.value(aff, vref -> master_solution.variable_value[vref]) - TOL < 0
                 continue
             end
@@ -76,7 +80,7 @@ function add_cutting_planes(master_model, master_solution, sub_models, sub_solut
             # We scale it to avoid this issue
             scaling = abs(aff.constant)
             if iszero(scaling)
-                scaling = maximum(term -> term[1], aff.terms)
+                scaling = maximum(term -> term[1], JuMP.linear_terms(aff))
             end
             scaled_aff = typeof(aff)(sign(aff.constant))
             for (coef, var) in JuMP.linear_terms(aff)
