@@ -115,12 +115,12 @@ function dual_objective_value(model::MOI.ModelLike, T::Type)
     for (F, S) in MOI.get(model, MOI.ListOfConstraints())
         bound += objective_bound(model, F, S, T)::T
     end
-    if MOI.get(model, MOI.ObjectiveSense()) != MOI.MaxSense
+    if MOI.get(model, MOI.ObjectiveSense()) != MOI.MAX_SENSE
         bound = -bound
     end
     dual_status = MOI.get(model, MOI.DualStatus())
-    if dual_status == MOI.InfeasibilityCertificate ||
-        status == MOI.NearlyInfeasibilityCertificate
+    if dual_status == MOI.INFEASIBILITY_CERTIFICATE ||
+        status == MOI.NEARLY_INFEASIBILITY_CERTIFICATE
         # The objective constant should not be present in rays
         F = MOI.get(model, MOI.ObjectiveFunctionType())
         f = MOI.get(model, MOI.ObjectiveFunction{F}())

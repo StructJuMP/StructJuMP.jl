@@ -13,20 +13,19 @@ end
 
 function optimize(model::ParametrizedModel)
     JuMP.optimize!(model.model)
-    feasible = JuMP.primal_status(model.model) == MOI.FeasiblePoint
+    feasible = JuMP.primal_status(model.model) == MOI.FEASIBLE_POINT
     if feasible
-        @assert JuMP.termination_status(model.model) == MOI.Success
+        @assert JuMP.termination_status(model.model) == MOI.OPTIMAL
         objective_value = JuMP.objective_value(model.model)
     else
+        @assert JuMP.termination_status(model.model) in (MOI.INFEASIBLE, MOI.ALMOST_INFEASIBLE)
         if isempty(model.parameter_map)
-            # This is the master model so we don't need to generate infeasibility ray
-            # hence the status can be `MOI.InfeasibleNoResult`. This happens for instance
-            # if the problem is a MIP.
-            @assert JuMP.termination_status(model.model) in (MOI.Success, MOI.InfeasibleNoResult)
             objective_value = nothing
         else
-            @assert JuMP.termination_status(model.model) == MOI.Success
-            @assert JuMP.dual_status(model.model) == MOI.InfeasibilityCertificate
+            if JuMP.termination_status(model.model) == MOI.ALMOST_INFEASIBLE
+                @warn("Using infeasibility ray of result with termination status: ALMOST_INFEASIBLE.")
+            end
+            @assert JuMP.dual_status(model.model) == MOI.INFEASIBILITY_CERTIFICATE
             objective_value = dual_objective_value(JuMP.backend(model.model),
                                                    Float64)
         end
