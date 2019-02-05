@@ -49,7 +49,7 @@ mutable struct StructuredModel <: JuMP.AbstractModel
         model = new(parent, children, probability, num_scenarios,                    # Structured
                     0, Dict{Int, JuMP.AbstractVariable}(),   Dict{Int, String}(),    # Model Variables
                     0, Dict{Int, JuMP.AbstractConstraint}(), Dict{Int, String}(),    # Model Constraints
-                    MOI.FeasibilitySense, zero(JuMP.GenericAffExpr{Float64, StructuredVariableRef}), # Model objective
+                    MOI.FEASIBILITY_SENSE, zero(JuMP.GenericAffExpr{Float64, StructuredVariableRef}), # Model objective
                     Dict{Symbol, Any}())                                             # Model objects
 
         if parent === nothing
