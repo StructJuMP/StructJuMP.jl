@@ -108,12 +108,23 @@ function ParametrizedModel(structured_model::StructuredModel, args...; kwargs...
     end
     θ = Dict{Int, VariableRef}()
     for (id, proba) in getprobability(structured_model)
-        θid = @variable(model, lower_bound = 0.0)
+        θid = @variable(model)
         θ[id] = θid
         JuMP.add_to_expression!(objective_function, proba, θid)
     end
     JuMP.set_objective(model, structured_model.objective_sense, objective_function)
     ParametrizedModel(structured_model, model, variable_map, parameter_map, θ)
+end
+
+"""
+    objective_lower_bound(model::ParametrizedModel)
+
+Deduce an objective lower bound from the variable bounds, returns `nothing` if
+this lower bound is infinite.
+"""
+function objective_lower_bound(model::ParametrizedModel)
+    # TODO add support for quadratic objective function
+    f = JuMP.objective_function(model, )
 end
 
 include("Benders_pmap.jl")
@@ -128,6 +139,10 @@ function BendersBridge(structured_model::StructuredModel,
     sub_models = Dict{Int, ParametrizedModel}()
     for (id, child) in getchildren(structured_model)
         sub_models[id] = ParametrizedModel(child, sub_optimizer)
+        lb = objective_lower_bound(sub_models[id])
+        if lb !== nothing
+            JuMP.set_lower_bound(master_model.θ, lb)
+        end
     end
     return Benders_pmap(master_model, sub_models)
 end
