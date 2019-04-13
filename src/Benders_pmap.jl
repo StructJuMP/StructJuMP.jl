@@ -50,7 +50,7 @@ function set_parent_solution!(model::ParametrizedModel, parent::ParametrizedMode
     for (index, parameter) in model.parameter_map
         vref = parent.variable_map[index]
         value = parent_solution.variable_value[vref]
-        ParameterJuMP.setvalue!(parameter, value)
+        JuMP.fix(parameter, value)
     end
 end
 
