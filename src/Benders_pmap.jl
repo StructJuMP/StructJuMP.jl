@@ -8,7 +8,7 @@ mutable struct Solution
     variable_value::Dict{JuMP.VariableRef, Float64}
     # Map between the parameter
     # and the dual value
-    parameter_dual::Dict{Parameter, Float64}
+    parameter_dual::Dict{ParameterRef, Float64}
 end
 
 function optimize(model::ParametrizedModel)
@@ -39,7 +39,7 @@ function optimize(model::ParametrizedModel)
             variable_value[θ] = JuMP.value(θ)
         end
     end
-    parameter_dual = Dict{Parameter, Float64}()
+    parameter_dual = Dict{ParameterRef, Float64}()
     for parameter in values(model.parameter_map)
         parameter_dual[parameter] = JuMP.dual(parameter)
     end
