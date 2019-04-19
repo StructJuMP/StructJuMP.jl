@@ -8,12 +8,12 @@ function parametrized_function(var::StructuredVariableRef,
                                structured_model::StructuredModel,
                                model::JuMP.Model,
                                variable_map::Dict{Int, JuMP.VariableRef},
-                               parameter_map::Dict{Int, ParameterJuMP.Parameter})
+                               parameter_map::Dict{Int, ParameterJuMP.ParameterRef})
     if var.model === structured_model
         return variable_map[var.idx]
     elseif var.model === structured_model.parent
         if !haskey(parameter_map, var.idx)
-            parameter_map[var.idx] = ParameterJuMP.Parameter(model)
+            parameter_map[var.idx] = ParameterJuMP.add_parameter(model)
         end
         return parameter_map[var.idx]
     else
@@ -24,9 +24,9 @@ function parametrized_function(aff::JuMP.GenericAffExpr{C, StructuredVariableRef
                                structured_model::StructuredModel,
                                model::JuMP.Model,
                                variable_map::Dict{Int, JuMP.VariableRef},
-                               parameter_map::Dict{Int, ParameterJuMP.Parameter}) where C
+                               parameter_map::Dict{Int, ParameterJuMP.ParameterRef}) where C
     param_aff = ParameterJuMP.PAE{C}(JuMP.GenericAffExpr{C, JuMP.VariableRef}(aff.constant),
-                                     JuMP.GenericAffExpr{C, ParameterJuMP.Parameter}(zero(C)))
+                                     JuMP.GenericAffExpr{C, ParameterJuMP.ParameterRef}(zero(C)))
     for (coef, var) in JuMP.linear_terms(aff)
         JuMP.add_to_expression!(param_aff,
                                 coef,
@@ -44,15 +44,15 @@ function parametrized_function(quad::JuMP.GenericQuadExpr{C, StructuredVariableR
                                structured_model::StructuredModel,
                                model::JuMP.Model,
                                variable_map::Dict{Int, JuMP.VariableRef},
-                               parameter_map::Dict{Int, ParameterJuMP.Parameter}) where C
+                               parameter_map::Dict{Int, ParameterJuMP.ParameterRef}) where C
     param_aff = parametrized_function(quad.aff, structured_model, model, variable_map, parameter_map)
     if param_aff isa ParameterJuMP.PAE
         error("parametrized quadratic functions are not supported yet")
         #quadv = JuMP.GenericQuadExpr{C, JuMP.VariableRef}(param_aff.v)
-        #quadp = JuMP.GenericQuadExpr{C, ParameterJuMP.Parameter}(param_aff.p)
+        #quadp = JuMP.GenericQuadExpr{C, ParameterJuMP.ParameterRef}(param_aff.p)
     else
         quadv = JuMP.GenericQuadExpr{C, JuMP.VariableRef}(param_aff)
-        quadp = JuMP.GenericQuadExpr{C, ParameterJuMP.Parameter}(zero(C))
+        quadp = JuMP.GenericQuadExpr{C, ParameterJuMP.ParameterRef}(zero(C))
     end
     for (coef, var1, var2) in JuMP.quadterms(quad)
         if var1.model === structured_model && var2.model == structured_model
@@ -77,7 +77,7 @@ struct ParametrizedModel
     variable_map::Dict{Int, JuMP.VariableRef}
     # Map between index of structured variable in `structured_model.parent`
     # and the corresponding parameter in `model`.
-    parameter_map::Dict{Int, ParameterJuMP.Parameter}
+    parameter_map::Dict{Int, ParameterJuMP.ParameterRef}
     # Cost of children
     θ::Dict{Int, JuMP.VariableRef}
 end
@@ -92,7 +92,7 @@ function ParametrizedModel(structured_model::StructuredModel, args...; kwargs...
         name = structured_model.varnames[index]
         variable_map[index] = JuMP.add_variable(model, var, name)
     end
-    parameter_map = Dict{Int, ParameterJuMP.Parameter}()
+    parameter_map = Dict{Int, ParameterJuMP.ParameterRef}()
     for (index, con) in structured_model.constraints
         name = structured_model.connames[index]
         param_fun = parametrized_function(con.func, structured_model, model,
