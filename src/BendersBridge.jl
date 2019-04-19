@@ -13,7 +13,7 @@ function parametrized_function(var::StructuredVariableRef,
         return variable_map[var.idx]
     elseif var.model === structured_model.parent
         if !haskey(parameter_map, var.idx)
-            parameter_map[var.idx] = ParameterJuMP.Parameter(model)
+            parameter_map[var.idx] = ParameterJuMP.add_parameter(model)
         end
         return parameter_map[var.idx]
     else
