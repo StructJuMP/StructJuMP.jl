@@ -18,12 +18,12 @@ Return the scalar product between a number `x` of the set `set` and a number
 """
 set_dot(x, y, set::MOI.AbstractScalarSet) = dot(x, y)
 
-_getconstant(set::MOI.AbstractScalarSet, T) = MOIU.getconstant(set)
+_getconstant(set::MOI.AbstractScalarSet, T) = MOI.constant(set)
 _getconstant(set::MOI.Integer, T) = zero(T)
 
 
 scalar_constant(T::Type, ::MOI.SingleVariable) = zero(T)
-scalar_constant(::Type, f::MOI.AbstractScalarFunction) = MOI._constant(f)
+scalar_constant(::Type, f::MOI.AbstractScalarFunction) = MOI.constant(f)
 
 function constraint_constant(model::MOI.ModelLike,
                              ci::MOI.ConstraintIndex{<:MOI.AbstractVectorFunction,
