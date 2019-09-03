@@ -260,9 +260,11 @@ function JuMP.set_objective(m::StructuredModel, sense::MOI.OptimizationSense,
     m.objective_function = f
 end
 JuMP.objective_sense(m::StructuredModel) = m.objective_sense
-function JuMP.objective_function(m::StructuredModel, FT::Type)
-    m.objective_function isa FT || error("The objective function is not of type $FT")
-    m.objective_function
+JuMP.objective_function_type(model::StructuredModel) = typeof(model.objective_function)
+JuMP.objective_function(model::StructuredModel) = model.objective_function
+function JuMP.objective_function(model::StructuredModel, FT::Type)
+    model.objective_function isa FT || error("The objective function is not of type $FT")
+    model.objective_function
 end
 
 # Names
@@ -273,6 +275,30 @@ end
 JuMP.name(cref::StructuredConstraintRef) = cref.model.connames[cref.idx]
 function JuMP.set_name(cref::StructuredConstraintRef, name::String)
     cref.model.connames[cref.idx] = name
+end
+
+# Show
+function JuMP.show_backend_summary(io::IO, model::StructuredModel) end
+function JuMP.show_objective_function_summary(io::IO, model::StructuredModel)
+    println(io, "Objective function type: ",
+            JuMP.objective_function_type(model))
+end
+function JuMP.objective_function_string(print_mode, model::StructuredModel)
+    return JuMP.function_string(print_mode, JuMP.objective_function(model))
+end
+_plural(n) = (isone(n) ? "" : "s")
+function JuMP.show_constraints_summary(io::IO, model::StructuredModel)
+    n = length(model.constraints)
+    print(io, "Constraint", _plural(n), ": ", n)
+end
+function JuMP.constraints_string(print_mode, model::StructuredModel)
+    strings = String[]
+    # Sort by creation order, i.e. ConstraintIndex value
+    constraints = sort(collect(model.constraints), by = c -> c.first.value)
+    for (index, constraint) in constraints
+        push!(strings, JuMP.constraint_string(print_mode, constraint))
+    end
+    return strings
 end
 
 include("BendersBridge.jl")

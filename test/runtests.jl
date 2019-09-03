@@ -1,5 +1,5 @@
-#include("printhook.jl")
-#
+include("printhook.jl")
+
 include("benderstest.jl")
 #
 #include("farmer.jl")
