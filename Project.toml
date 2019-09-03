@@ -11,8 +11,8 @@ ParameterJuMP = "774612a8-9878-5177-865a-ca53ae2495f9"
 
 [compat]
 JuMP = "0.20"
-MathOptInterface = "0.9"
-ParameterJuMP = "0.1"
+MathOptInterface = "0.9.1"
+ParameterJuMP = "0.1.2"
 julia = "1"
 
 [extras]
