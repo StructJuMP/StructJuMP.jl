@@ -1,5 +1,3 @@
-include("dual_objective_value.jl")
-
 mutable struct Solution
     feasible::Bool
     objective_value::Union{Nothing, Float64}
@@ -26,8 +24,7 @@ function optimize(model::ParametrizedModel)
                 @warn("Using infeasibility ray of result with termination status: ALMOST_INFEASIBLE.")
             end
             @assert JuMP.dual_status(model.model) == MOI.INFEASIBILITY_CERTIFICATE
-            objective_value = dual_objective_value(JuMP.backend(model.model),
-                                                   Float64)
+            objective_value = JuMP.dual_objective_value(model.model)
         end
     end
     variable_value = Dict{JuMP.VariableRef, Float64}()
