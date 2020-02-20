@@ -120,9 +120,11 @@ include("Benders_pmap.jl")
 
 # The optimizers are function returning an empty optimizer,
 # this will be replaced by factories once this is implemented in JuMP
-function BendersBridge(structured_model::StructuredModel,
-                       master_optimizer::JuMP.OptimizerFactory,
-                       sub_optimizer::JuMP.OptimizerFactory)
+function BendersBridge(
+    structured_model::StructuredModel,
+    master_optimizer::Any,
+    sub_optimizer::Any
+)
     master_model = ParametrizedModel(structured_model, master_optimizer)
     children = getchildren(structured_model)
     sub_models = Dict{Int, ParametrizedModel}()

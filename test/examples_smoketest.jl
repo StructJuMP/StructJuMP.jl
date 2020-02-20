@@ -25,30 +25,34 @@ end
 
 @testset "parmodel1" begin
     include("../examples/parmodel1.jl")
-    using Ipopt
-    setsolver(firststage, IpoptSolver(print_level=0))
-    solve(firststage)
+    # using Ipopt
+    # set_optimizer(firststage, Ipopt.Optimizer)
+    # set_optimizer_attribute(first_stage, "print_level", 0)
+    # optimize!(firststage)
 end
 
 @testset "parmodel2" begin
     include("../examples/parmodel2.jl")
-    using Ipopt
-    setsolver(firststage, IpoptSolver(print_level=0))
-    solve(firststage)
+    # using Ipopt
+    # set_optimizer(firststage, Ipopt.Optimizer)
+    # set_optimizer_attribute(first_stage, "print_level", 0)
+    # optimize!(firststage)
 end
 
 @testset "parmodel3" begin
     include("../examples/parmodel3.jl")
-    using Ipopt
-    setsolver(firststage, IpoptSolver(print_level=0))
-    solve(firststage)
+    # using Ipopt
+    # set_optimizer(firststage, Ipopt.Optimizer)
+    # set_optimizer_attribute(first_stage, "print_level", 0)
+    # optimize!(firststage)
 end
 
 @testset "parmodel4" begin
     include("../examples/parmodel4.jl")
-    using Ipopt
-    setsolver(firststage, IpoptSolver(print_level=0))
-    solve(firststage)
+    # using Ipopt
+    # set_optimizer(firststage, Ipopt.Optimizer)
+    # set_optimizer_attribute(first_stage, "print_level", 0)
+    # optimize!(firststage)
 end
 
 #=
