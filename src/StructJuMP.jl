@@ -255,7 +255,7 @@ end
 
 # Objective
 function JuMP.set_objective(m::StructuredModel, sense::MOI.OptimizationSense,
-                            f::JuMP.AbstractJuMPScalar)
+                            f::Union{Real, AbstractJuMPScalar})
     m.objective_sense = sense
     m.objective_function = f
 end
