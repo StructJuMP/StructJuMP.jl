@@ -37,7 +37,7 @@ The above example builds a two level structured model `m` with 2 scenarios.
 Problems modeled in StructJuMP models can be solved in parallel using the [PIPS-NLP](https://github.com/Argonne-National-Laboratory/PIPS) parallel optimization solver. In addition, StructJuMP models can be solved (in serial only) using [Ipopt](https://projects.coin-or.org/Ipopt). The SturctJuMP models interface with the solvers via [StructJuMPSolverInterface.jl](https://github.com/Argonne-National-Laboratory/StructJuMPSolverInterface.jl).
 
 ### Mixed-Integer Solvers
-[DSP](https://github.com/Argonne-National-Laboratory/DSP.git) can read models from StructJuMP via [DSPsolver.jl](https://github.com/Argonne-National-Laboratory/DSPsolver.jl.git). In particular, ``DSP`` can solver problems with integer variables in parallel.
+[DSP](https://github.com/Argonne-National-Laboratory/DSP.git) can read models from StructJuMP via [DSP.jl](https://github.com/kibaekkim/DSP.jl.git). In particular, ``DSP`` can solver problems with integer variables in parallel.
 
 ### Stochastic Dual Dynamic Programming (SDDP)
 [StructDualDynProg](https://github.com/blegat/StructDualDynProg.jl) can run the SDDP algorithm on multi-stage models from StructJuMP.
