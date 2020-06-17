@@ -27,7 +27,7 @@ end
 function prepProblemBounds(m::Model)
 
     objaff::AffExpr = m.obj.aff
-        
+
     # We already have dense column lower and upper bounds
 
     # Create dense objective vector
@@ -53,7 +53,7 @@ function prepProblemBounds(m::Model)
         rowlb[c] = m.linconstr[c].lb
         rowub[c] = m.linconstr[c].ub
     end
-    
+
     return f, rowlb, rowub
 end
 

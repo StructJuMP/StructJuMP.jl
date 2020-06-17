@@ -21,7 +21,7 @@ m = StructuredModel()
 
 s0 = StructuredModel(parent=m, id=1)
 @variable(s0, 0 <= y[TESTTIME,GEN] <= 1)
-@objective(s0, :Min, FIXEDGENCOST*sum(y[t,j] for t=TESTTIME,j=GEN))
+@objective(s0, Min, FIXEDGENCOST*sum(y[t,j] for t=TESTTIME,j=GEN))
 
 for it=1:NUMSCEN
     st = StructuredModel(parent=s0, id=1+it)
@@ -63,6 +63,6 @@ for it=1:NUMSCEN
     end
 
     # need Exp here for earlier sml versions
-    @objective(st, :Min, sum(COSTSCALE*gen_cost[i]*Pgen[t,i] for t=TESTTIME, i=GEN))
+    @objective(st, Min, sum(COSTSCALE*gen_cost[i]*Pgen[t,i] for t=TESTTIME, i=GEN))
 
 end

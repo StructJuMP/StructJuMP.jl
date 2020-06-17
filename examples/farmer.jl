@@ -40,7 +40,7 @@ m = StructuredModel(num_scenarios=NS);
 @variable(m, x[i=CROPS] >= 0)
 
 # first-stage objective
-@objective(m, :Min, sum(Cost[i] * x[i] for i=CROPS))
+@objective(m, Min, sum(Cost[i] * x[i] for i=CROPS))
 
 # first-stage constraint
 @constraint(m, const_budget,
@@ -58,9 +58,10 @@ for s in 1:NS
     @variable(sb, w[k=SELL] >= 0)
 
     # objective
-    @objective(sb, :Min,
-                  sum(Purchase[s,j] * y[j] for j=PURCH)
-                  - sum(Sell[s,k] * w[k] for k=SELL))
+    @objective(sb, Min,
+        sum(Purchase[s, j] * y[j] for j in PURCH) -
+            sum(Sell[s, k] * w[k] for k in SELL)
+    )
     # constraints
     @constraint(sb, const_minreq[j=PURCH],
                    Yield[s,j] * x[j] + y[j] - w[j] >= Minreq[s,j])
