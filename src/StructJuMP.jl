@@ -30,7 +30,7 @@ mutable struct StructuredModel <: JuMP.AbstractModel
     constraints::Dict{Int, JuMP.AbstractConstraint} # Map conidx -> variable
     connames::Dict{Int, String}                     # Map varidx -> name
     objective_sense::MOI.OptimizationSense
-    objective_function::Union{Real, JuMP.AbstractJuMPScalar}
+    objective_function::JuMP.AbstractJuMPScalar
     objdict::Dict{Symbol, Any}                      # Same that JuMP.Model's field `objdict`
     function StructuredModel(; parent=nothing, same_children_as=nothing, id=0,
                              num_scenarios::Int=0,
