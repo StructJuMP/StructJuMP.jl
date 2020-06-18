@@ -5,8 +5,8 @@ using GLPK
 using Test
 
 #misocp_solver = CbcSolver()
-misocp_solver = with_optimizer(GLPK.Optimizer)
-socp_solver = with_optimizer(ECOS.Optimizer, verbose=false)
+misocp_solver = GLPK.Optimizer
+socp_solver = optimizer_with_attributes(ECOS.Optimizer, "verbose" => false)
 
 #@testset "[Benders] conicconstraintdata with more variables in parent" begin
 #    m = StructuredModel(num_scenarios=1)
