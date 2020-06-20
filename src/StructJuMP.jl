@@ -265,11 +265,6 @@ end
 
 JuMP.set_objective_function(m::StructuredModel, f::Real) = JuMP.set_objective_function(m, convert(AffExpr, f))
 
-function JuMP.set_objective(m::StructuredModel, sense::MOI.OptimizationSense, f)
-    set_objective_sense(m, sense)
-    set_objective_function(m, f)
-end
-
 JuMP.objective_sense(m::StructuredModel) = m.objective_sense
 JuMP.objective_function_type(model::StructuredModel) = typeof(model.objective_function)
 JuMP.objective_function(model::StructuredModel) = model.objective_function
