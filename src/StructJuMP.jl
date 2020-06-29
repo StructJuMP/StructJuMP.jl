@@ -254,11 +254,17 @@ function JuMP.constraint_object(cref::StructuredConstraintRef, F::Type, S::Type)
 end
 
 # Objective
-function JuMP.set_objective(m::StructuredModel, sense::MOI.OptimizationSense,
-                            f::JuMP.AbstractJuMPScalar)
+
+function JuMP.set_objective_sense(m::StructuredModel, sense::MOI.OptimizationSense)
     m.objective_sense = sense
+end
+
+function JuMP.set_objective_function(m::StructuredModel, f::AbstractJuMPScalar)
     m.objective_function = f
 end
+
+JuMP.set_objective_function(m::StructuredModel, f::Real) = JuMP.set_objective_function(m, convert(AffExpr, f))
+
 JuMP.objective_sense(m::StructuredModel) = m.objective_sense
 JuMP.objective_function_type(model::StructuredModel) = typeof(model.objective_function)
 JuMP.objective_function(model::StructuredModel) = model.objective_function
