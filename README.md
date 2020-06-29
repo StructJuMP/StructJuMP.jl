@@ -1,6 +1,7 @@
 # StructJuMP
 The StructJuMP package provides a parallel algebraic modeling framework for block structured optimization models in Julia. StructJuMP, originally known as StochJuMP, is tailored to two-stage stochastic optimization problems and uses MPI to enable a parallel, distributed memory instantiation of the problem. StructJuMP.jl is an extension of the [JuMP.jl](https://github.com/JuliaOpt/JuMP.jl) package, which is as fast as [AMPL](http://ampl.com) and faster than any other modeling tools such as [GAMS](http://www.gams.com) and [Pyomo](http://www.pyomo.org) (see [this](http://arxiv.org/pdf/1312.1431.pdf)).
 
+![GitHub tag (latest SemVer)](https://img.shields.io/github/v/tag/StructJuMP/StructJuMP.jl?label=release&sort=semver)
 [![Build Status](https://travis-ci.org/StructJuMP/StructJuMP.jl.svg?branch=master)](https://travis-ci.org/StructJuMP/StructJuMP.jl)
 
 ## Installation
