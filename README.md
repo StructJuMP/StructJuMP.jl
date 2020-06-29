@@ -5,8 +5,8 @@ The StructJuMP package provides a parallel algebraic modeling framework for bloc
 
 ## Installation
 
-The `master` branch of this package works with the JuMP v0.19. To
-try this package with JuMP v0.19, do:
+The `master` branch of this package works with the JuMP v0.21. To
+try this package, do:
 ```julia
 ] add StructJuMP#master
 ```
