@@ -300,7 +300,7 @@ end
 function JuMP.constraints_string(print_mode, model::StructuredModel)
     strings = String[]
     # Sort by creation order, i.e. ConstraintIndex value
-    constraints = sort(collect(model.constraints), by = c -> c.first.value)
+    constraints = sort(collect(model.constraints), by = c -> c.first)
     for (index, constraint) in constraints
         push!(strings, JuMP.constraint_string(print_mode, constraint))
     end
