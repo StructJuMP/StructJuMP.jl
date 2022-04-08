@@ -82,11 +82,7 @@ struct ParametrizedModel
     θ::Dict{Int, JuMP.VariableRef}
 end
 function ParametrizedModel(structured_model::StructuredModel, args...; kwargs...)
-    if structured_model.parent === nothing
-        model = Model(args...; kwargs...)
-    else
-        model = ModelWithParams(args...; kwargs...)
-    end
+    model = Model(args...; kwargs...)
     variable_map = Dict{Int, JuMP.VariableRef}()
     for (index, var) in structured_model.variables
         name = structured_model.varnames[index]

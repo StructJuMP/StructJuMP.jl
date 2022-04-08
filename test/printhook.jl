@@ -27,16 +27,10 @@ Subject to
  x + y = 1.0
 """
     @test sprint(show, parent) == """
-A JuMP Model
+An Abstract JuMP Model
 Minimization problem with:
 Variables: 2
-Objective function type: GenericQuadExpr{Float64,StructJuMP.StructuredVariableRef}
+Objective function type: GenericQuadExpr{Float64, StructJuMP.StructuredVariableRef}
 Constraint: 1
 Names registered in the model: x, y"""
-    @test sprint(show, "text/latex", parent) == """
-\$\$ \\begin{alignat*}{1}\\min\\quad & x^2 + y\\\\
-\\text{Subject to} \\quad & x + y = 1.0\\\\
-\\end{alignat*}
- \$\$"""
-    #@test occursin("Child", str)
 end
