@@ -88,7 +88,6 @@ Base.copy(v::StructuredVariableRef) = v
 Base.:(==)(v::StructuredVariableRef, w::StructuredVariableRef) = v.model === w.model && v.idx == w.idx
 JuMP.owner_model(v::StructuredVariableRef) = v.model
 JuMP.isequal_canonical(v::StructuredVariableRef, w::StructuredVariableRef) = v == w
-JuMP.variable_type(::StructuredModel) = StructuredVariableRef
 function JuMP.add_variable(m::StructuredModel, v::JuMP.AbstractVariable, name::String="")
     m.nextvaridx += 1
     vref = StructuredVariableRef(m, m.nextvaridx)
@@ -231,7 +230,6 @@ struct StructuredConstraintRef
     model::StructuredModel # `model` owning the constraint
     idx::Int       # Index in `model.constraints`
 end
-JuMP.constraint_type(::StructuredModel) = StructuredConstraintRef
 function JuMP.add_constraint(m::StructuredModel, c::JuMP.AbstractConstraint, name::String="")
     m.nextconidx += 1
     cref = StructuredConstraintRef(m, m.nextconidx)

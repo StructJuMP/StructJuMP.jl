@@ -47,7 +47,7 @@ function set_parent_solution!(model::ParametrizedModel, parent::ParametrizedMode
     for (index, parameter) in model.parameter_map
         vref = parent.variable_map[index]
         value = parent_solution.variable_value[vref]
-        JuMP.fix(parameter, value)
+        JuMP.set_value(parameter, value)
     end
 end
 
@@ -66,7 +66,7 @@ function add_cutting_planes(master_model, master_solution, sub_models, sub_solut
         if sol.feasible
             JuMP.add_to_expression!(aff, -1.0, master_model.θ[id])
             # Check if the cut is useful
-            if JuMP.value(aff, vref -> master_solution.variable_value[vref]) - TOL < 0
+            if JuMP.value(vref -> master_solution.variable_value[vref], aff) - TOL < 0
                 continue
             end
         else

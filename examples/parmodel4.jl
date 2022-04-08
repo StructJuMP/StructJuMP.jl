@@ -6,7 +6,7 @@ firststage = StructuredModel()
 @objective(firststage, Min, x[1]^2 + x[2]^2 + x[1]*x[2])
 
 for scen in 1:100
-    bl = StructuredModel(parent=firststage, id=scen)
+    local bl = StructuredModel(parent=firststage, id=scen)
     @variable(bl, y[1:2])
     idx = (isodd(scen) ? 1 : 2)
     @constraint(bl, x[idx] + sum(y) ≥  0)
