@@ -24,7 +24,7 @@ using StructJuMP
     @test sprint(print, parent) == """
 Min x² + y
 Subject to
- x + y = 1.0
+ x + y = 1
 """
     @test sprint(show, parent) == """
 An Abstract JuMP Model
