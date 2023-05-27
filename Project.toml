@@ -1,7 +1,7 @@
 name = "StructJuMP"
 uuid = "34f15cae-5318-50c9-93d3-9feadd34e321"
 repo = "https://github.com/StructJuMP/StructJuMP.jl.git"
-version = "0.3.0"
+version = "0.3.1"
 
 [deps]
 JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
@@ -10,10 +10,10 @@ MathOptInterface = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
 ParameterJuMP = "774612a8-9878-5177-865a-ca53ae2495f9"
 
 [compat]
-JuMP = "0.23, 1"
+JuMP = "1"
 MathOptInterface = "1"
-ParameterJuMP = "0.4.1"
-julia = "1.6"
+ParameterJuMP = "0.4"
+julia = "1"
 
 [extras]
 ECOS = "e2685f51-7e38-5353-a97d-a921fd2c8199"
